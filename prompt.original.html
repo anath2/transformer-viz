@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>One-shot prompt: browser-native 2-layer induction transformer visualizer</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+        background: #ffffff;
+        color: #202124;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          background: #111318;
+          color: #e9edf5;
+        }
+      }
+      body {
+        max-width: 58rem;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem 4rem;
+      }
+      h1 {
+        line-height: 1.2;
+        font-size: clamp(1.7rem, 4vw, 2.5rem);
+        margin-bottom: 0.5rem;
+      }
+      h2 {
+        margin-top: 2.5rem;
+        border-top: 1px solid #6c757d4d;
+        padding-top: 1.75rem;
+      }
+      p,
+      li {
+        max-width: 75ch;
+      }
+      .goal {
+        font-size: 1.05rem;
+        padding: 1rem 1.25rem;
+        border-left: 4px solid #646bf0;
+        background: #646bf015;
+      }
+      .note {
+        padding: 0.75rem 1rem;
+        border-left: 4px solid #d99b00;
+        background: #d99b0015;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.92em;
+      }
+      p code,
+      li code,
+      td code {
+        background: #7c82891a;
+        padding: 0.12em 0.32em;
+        border-radius: 0.25rem;
+      }
+      pre {
+        background: #7c82891a;
+        padding: 1rem;
+        overflow-x: auto;
+        border-radius: 0.4rem;
+      }
+      pre code {
+        background: transparent;
+        padding: 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      th,
+      td {
+        border: 1px solid #6c757d4d;
+        padding: 0.6rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        width: max(22%, 10rem);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>One-shot prompt: browser-native 2-layer induction transformer visualizer</h1>
+    <p class="goal">
+      Build a complete, polished, interactive web app that runs a two-layer attention-only toy transformer entirely in the browser with WebGPU, while providing TransformerLens/CircuitViz-style interpretability visualizations for its induction circuit. Use WebAssembly as a transparent fallback. Do not require a backend, inference API, model hub, or transmission of user data anywhere.
+    </p>
+
+    <h2>Role and deliverable</h2>
+    <p>Deliver a production-quality, self-contained web app that works by opening its entry HTML file directly in a browser.Assume the user is studying a compact induction circuit and wants short, exploratory feedback loops in the browser.</p>
+    <p>Prefer a small Vite + TypeScript project, but avoid heavy dependencies. If WebGPU compute is not available, the same model must run through the WebAssembly path with identical outputs (within normal floating-point tolerance) and the UI must explicitly show the active backend. The app must still be usable without any network connection after it is downloaded or checked out.</p>
+    <p>Exception to the no-backend rule: the initial build may download the TransformerLens weights once and convert them into a small, browser-local artifact. Once converted, the app itself must load only from local project files, IndexedDB, or <code>localStorage</code>; it must never transmit tokens, text, activations, weights, telemetry, or analytics.</p>
+
+    <h2>Target model</h2>
+    <p>Implement and visualize this exact TransformerLens configuration:</p>
+    <pre><code>HookedTransformerConfig(
+  d_model=768,
+  d_head=64,
+  n_heads=12,
+  n_layers=2,
+  n_ctx=2048,
+  d_vocab=50278,
+  attention_dir="causal",
+  attn_only=True,
+  seed=398,
+  use_attn_result=True,
+  normalization_type=None,
+  positional_embedding_type="shortformer"
+)</code></pre>
+    <p>Model architecture, semantics, and naming should follow TransformerLens as closely as practical:</p>
+    <ul>
+      <li>Embedding: learnable token embedding plus learnable shortformer position embedding.</li>
+      <li>Two causal, multi-head self-attention blocks with no MLPs or LayerNorm.</li>
+      <li>Preserve named intermediate hooks: embeddings, Q/K/V/Z, attention scores and patterns, head results, and per-head residual contributions.</li>
+      <li>Compute per-head output as <code>z @ W_O</code>, and make direct logit attribution straightforward.</li>
+      <li>Model identifiers to expose in UI and docs: TransformerLens-style configuration and <code>callummcdougall/attn_only_2L_half</code>.</li>
+    </ul>
+    <p>Keep the operation graph synchronized with the WebGPU backend. Implement fallback logic in the shared numerical core so attention math, caching, and all analysis results remain available on the WebAssembly backend.</p>
+
+    <h2>Model data and provenance</h2>
+    <p>Use the pretrained weights from <code>callummcdougall/attn_only_2L_half</code>, file <code>attn_only_2L_half.pth</code>, reconstructed from TransformerLens 2.17.0-compatible state format. The app must show provenance, license status if determinable, parameter counts, and artifact checksum.</p>
+    <p>Choose one of these approaches and document the choice:</p>
+    <ul>
+      <li><strong>Preferred:</strong> check in or generate a compact FP16/NPY artifact that can be loaded synchronously as bytes in the browser.</li>
+      <li><strong>Alternative:</strong> reconstruct from raw binary artifacts already present in the repository.</li>
+      <li><strong>Development-only fallback:</strong> if real weights cannot be embedded in the final answer, create a deterministic synthetic model with the exact architecture and clearly label it as “synthetic — not pretrained”; do not misrepresent it as the pretrained model.</li>
+    </ul>
+    <p>If a conversion utility is included, it may read the upstream checkpoint during development and write a local artifact. It must be optional and completely unnecessary after the browser app is built. Never dynamically fetch model data from Hugging Face, GitHub, or any other remote at runtime.</p>
+    <p>The production artifact should remain comfortably small enough for local iteration.</p>
+
+    <h2>Runtime and privacy requirements</h2>
+    <ul>
+      <li>All model inference, activation caching, analysis, and visualization happen in the browser.</li>
+      <li>WebGPU is the primary backend. Detect missing hardware/API support and transparently fall back to WebAssembly.</li>
+    </ul>
+
+    <h2>Interactions and UI</h2>
+    <p>Provide a clean, information-dense app shell and a responsive but research-oriented layout. Its workflow should feel like CircuitViz meets Transformer Explainer.</p>
+    <ul>
+      <li><strong>Prompt controls:</strong> editable token text, sequence length, random-token sequence generation, replay/step controls, sampling parameters if generation is included, and a run/cache button.</li>
+      <li><strong>Token table:</strong> show token ID, source key, layer probabilities, and predicted token; highlight the repeated halves, BOS, first half, second half, and the induction target.</li>
+      <li><b>Discuss further</b><strong>Activation explorer:</strong> list the full activation cache in a searchable, sortable tree or table. Export selected tensors to JSON or CSV locally from a download button.</li>
+      <li><strong>Top attention views:</strong> default to per-layer grids of head-by-dest/source attention heatmaps with tokens on both axes, perpetual causal masking for impossible positions, tooltips with exact values, color scale controls, and selectable layer/head cards.</li>
+      <li><strong>Detail view:</strong> after selecting a head, show an enlarged attention heatmap with configurable destination/source bands, induction stripe overlays, and exact matrix values.</li>
+      <li><strong>Circuit graph:</strong> render an interactive node-link diagram for tokens, heads, and the induction circuit. Node size/color can encode score or effect. Edge labels show paths and attention relations. Include static, deterministic layout for the canonical circuit diagram.</li>
+      <li><strong>Timeline and run stats:</strong> total runtime, prefill/cache build time, sequence length, backend, model mode, and memory usage if available.</li>
+    </ul>
+
+    <h2>Interpretability analyses</h2>
+    <ol>
+      <li><strong>Attention head classifier:</strong> a configurable grid showing each layer/head with score labels, detector thresholds, and reasons for the current classification.</li>
+      <li><strong>Per-token loss and logits:</strong> show next-token loss and the layer-0/layer-1 direct logit attribution for each head, including a combined layer attribution chart. Explain the induction-period improvement in plain English.</li>
+      <li><strong>Ablation experiments:</strong> ability turn off a head for zero ablation and measure the effect on loss and attention scores.</li>
+      <li><strong>Circuit composition:</strong>
+        <ul>
+          <li>compute Q, K, and V composition scores between layer-0 and layer-1 heads,</li>
+          <li>define the score consistently as <code>||W_AB||_F / (||W_A||_F * ||W_B||_F)</code>,</li>
+          <li>support all pairs of layer-0 OV and layer-1 QK/OV circuits,</li>
+          <li>highlight layer-0 previous-token head → layer-1 induction-head K-composition.</li>
+        </ul>
+      </li>
+      <li><strong>End-to-end induction narrative:</strong> show the canonical path: first-half token <code>A</code> → previous-token head at the first <code>B</code> → writes previous-token information into the residual/K-vector → second-half <code>A</code> queries through K-composition → attends to first <code>B</code> → OV circuit promotes the next token <code>B</code>. Link each narrative step to the exact tokens, attention cells, tensors, and weights involved.</li>
+    </ol>
+
+    <h2>Transformer Explainer-inspired presentation</h2>
+    <p>Borrow the strongest UX ideas from the reference, but do not copy its design verbatim:</p>
+    <ul>
+      <li>progressive disclosure: simple overview first, then expandable layer/head and tensor detail,</li>
+      <li>flow diagrams that let users inspect underlying computation step by step,</li>
+      <li>color-coded tensor shapes and readable descriptions for each operation,</li>
+      <li>hover and selection coordination between attention cells, token chips, graphs, and selected tensor rows,</li>
+      <li>realistic generated tokens and attention animation that aid intuition without obscuring exact values.</li>
+    </ul>
+
+    <h2>Data, state, and performance</h2>
+    <ul>
+      <li>Keep model parameters and inferred activations in typed arrays or GPU buffers.</li>
+      <li>Cache activation results in memory and, if necessary, IndexedDB for faster subsequent local runs.</li>
+      <li>Debounce interactive filters and redraw requests.</li>
+      <li>Provide efficient batched analysis; for example, repeated runs should not materialize the full 50278-vocabulary logits unless needed.</li>
+      <li>Keep sequences short by default and validate inputs before dispatching GPU work.</li>
+      <li>Stop computing as soon as a WebGPU device is lost or invalidated.</li>
+    </ul>
+
+    <h2>Quality and accessibility</h2>
+    <ul>
+      <li>compact and comfortable densities, and keyboard navigation.</li>
+      <li>Give every visualization an accessible table or text summary.</li>
+      <li>Use sufficient contrast and do not rely on color alone; show exact values or symbols in tooltips and accessible summaries.</li>
+      <li>Preserve zoom and pan for heatmaps and graphs while keeping controls keyboard reachable.</li>
+      <li>Handle failed runs with clear, actionable UI states.</li>
+    </ul>
+
+    <h2>Testing and verification</h2>
+    <p>Provide a self-contained verification page or panel that proves numerical and privacy correctness:</p>
+    <ul>
+      <li><strong>Numerical parity:</strong> include fixture tensors and compare WebGPU and WebAssembly outputs at several sequence lengths.</li>
+      <li><strong>Model parity:</strong> compare a sample forward pass and cached activations with expected values from TransformerLens if possible; otherwise include deterministic synthetic fixtures.</li>
+      <li><strong>Analysis correctness:</strong> unit-test detector diagonals, induction scoring, direct logit attribution, ablation effects, and composition scores.</li>
+      <li><strong>Interaction tests:</strong> verify backend switching, token selection, attention heatmap rendering, export, and failure/empty states.</li>
+    </ul>
+    <p>Run the project’s build and test commands and report results. If WebGPU is unavailable in the build environment, tests must still cover the WebAssembly path and use automated stubs for the WebGPU API.</p>
+
+    <h2>Documentation and structure</h2>
+    <p>Document in <code>README.md</code>:</p>
+    <ul>
+      <li>setup, build, development, and test commands;</li>
+      <li>WebGPU and WebAssembly browser support, with expected fallback behavior;</li>
+      <li>model provenance, artifact format, conversion instructions, and expected checksum;</li>
+      <li>interpretability methods, formulas, thresholds, and limitations;</li>
+      <li>the induction circuit narrative and the exercise identities that the app reproduces.</li>
+    </ul>
+    <p>Organize source by domain — for example backend adapters, model implementation, analysis, visualization, UI state, tests, and documentation — and use small, focused modules rather than a monolithic file. Add concise inline comments only where formulas or numerical semantics are non-obvious.</p>
+
+    <h2>Acceptance criteria</h2>
+    <ol>TODO</ol>
+    <h2>Revision checklist</h2>
+    <p>Before delivery, verify each acceptance criterion and explicitly report:</p>
+    <ul>
+        TODO
+    </ul>
+  </body>
+</html>

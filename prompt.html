@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>One-shot prompt: browser-native 2-layer induction transformer visualizer</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.55;
+        background: #ffffff;
+        color: #202124;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          background: #111318;
+          color: #e9edf5;
+        }
+      }
+      body {
+        max-width: 58rem;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem 4rem;
+      }
+      h1 {
+        line-height: 1.2;
+        font-size: clamp(1.7rem, 4vw, 2.5rem);
+        margin-bottom: 0.5rem;
+      }
+      h2 {
+        margin-top: 2.5rem;
+        border-top: 1px solid #6c757d4d;
+        padding-top: 1.75rem;
+      }
+      p,
+      li {
+        max-width: 75ch;
+      }
+      .goal {
+        font-size: 1.05rem;
+        padding: 1rem 1.25rem;
+        border-left: 4px solid #646bf0;
+        background: #646bf015;
+      }
+      .note {
+        padding: 0.75rem 1rem;
+        border-left: 4px solid #d99b00;
+        background: #d99b0015;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.92em;
+      }
+      p code,
+      li code,
+      td code {
+        background: #7c82891a;
+        padding: 0.12em 0.32em;
+        border-radius: 0.25rem;
+      }
+      pre {
+        background: #7c82891a;
+        padding: 1rem;
+        overflow-x: auto;
+        border-radius: 0.4rem;
+      }
+      pre code {
+        background: transparent;
+        padding: 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+      }
+      th,
+      td {
+        border: 1px solid #6c757d4d;
+        padding: 0.6rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        width: max(22%, 10rem);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>One-shot prompt: browser-native 2-layer induction transformer visualizer</h1>
+    <p class="goal">
+      Build a complete, polished, interactive static web app that runs a two-layer attention-only toy transformer entirely in the browser with WebGPU, with a WebAssembly fallback, and provides TransformerLens/CircuitsVis-style interpretability visualizations of its induction circuit, reproducing the analyses of ARENA chapter 1.2 (“Intro to Mech Interp”). There is no backend, no inference API, and no runtime model hub, and no user data is sent anywhere. The app is deployed as a static site on Cloudflare Pages.
+    </p>
+
+    <h2>Resolved decisions</h2>
+    <p>These choices are final. Do not revisit them; implement them.</p>
+    <table>
+      <tr><th>Hosting</th><td>Static Vite build served over HTTP(S): <code>vite preview</code> locally and Cloudflare Pages in production. Opening the build from <code>file://</code> is <em>not</em> a goal, because module scripts and <code>fetch</code> fail there. After the first load the app works offline through a service worker.</td></tr>
+      <tr><th>Pretrained weights</th><td><strong>Bring your own.</strong> The checkpoint has no declared license, so the deployed site must not contain or rehost pretrained weights. Users either run the local conversion script or import the <code>.pth</code> into the app; it is cached locally in IndexedDB or Cache Storage. Until weights are imported, the app runs a clearly labelled synthetic model with a planted induction circuit.</td></tr>
+      <tr><th>Weight format</th><td>W_E and W_U stored as int8 with symmetric per-token FP16 scales. Everything else stored as FP16. All compute is f32. A full-precision FP16 artifact also exists, used for reference and testing.</td></tr>
+      <tr><th>Parity</th><td>Two tiers. (1) The FP16 artifact must match TransformerLens tightly. (2) The drift of the int8 artifact from FP16 is bounded and reported.</td></tr>
+      <tr><th>Tokenizer</th><td>Full free-text BPE, exactly matching <code>EleutherAI/gpt-neox-20b</code>.</td></tr>
+      <tr><th>Generation</th><td>Included: simple autoregressive sampling (greedy, temperature, top-k) with step-by-step replay.</td></tr>
+      <tr><th>Ablation</th><td>Zero ablation only.</td></tr>
+      <tr><th>Activation explorer</th><td>Lists every hook, but tensors are materialized lazily.</td></tr>
+      <tr><th>Audience</th><td>ARENA-level learners: plain-English explanations alongside the exact math and tensor shapes.</td></tr>
+    </table>
+
+    <h2>Role and deliverable</h2>
+    <p>Deliver a production-quality Vite + TypeScript static web app. Assume the user is studying a compact induction circuit and wants short, exploratory feedback loops in the browser. Keep dependencies minimal. These are allowed:</p>
+    <ul>
+      <li><code>@huggingface/tokenizers</code>, a pure-TS tokenizer of about 8 KB gzipped;</li>
+      <li>a small Rust crate compiled to WASM;</li>
+      <li>dev and test tooling.</li>
+    </ul>
+    <p>Do not use UI frameworks heavier than a small reactive library, or none at all. Do not use chart libraries larger than about 50 KB gzipped; hand-written SVG or Canvas is preferred.</p>
+    <p>If WebGPU compute is unavailable, the same model must run on the WebAssembly path with outputs that match within the tolerances below. The UI must always show the active backend.</p>
+    <p>Hard privacy rule: the app must never transmit tokens, text, activations, weights, telemetry, or analytics. The only network traffic allowed is same-origin requests for the app's own static assets. A Content-Security-Policy enforces this (see below).</p>
+
+    <h2>Target model</h2>
+    <p>Implement this exact TransformerLens configuration, which is the one used in ARENA 1.2:</p>
+    <pre><code>HookedTransformerConfig(
+  d_model=768,
+  d_head=64,
+  n_heads=12,
+  n_layers=2,
+  n_ctx=2048,
+  d_vocab=50278,
+  attention_dir="causal",
+  attn_only=True,
+  tokenizer_name="EleutherAI/gpt-neox-20b",
+  seed=398,
+  use_attn_result=True,
+  normalization_type=None,
+  positional_embedding_type="shortformer"
+)</code></pre>
+    <p>Forward-pass semantics. These match TransformerLens 2.x, and the README must document them.</p>
+    <pre><code>tokens: [pos]                     # BOS = id 0 ("&lt;|endoftext|&gt;") prepended by default
+embed      = W_E[tokens]          # hook_embed       [pos, 768]
+pos_embed  = W_pos[0..pos)        # hook_pos_embed   [pos, 768]
+resid_pre0 = embed                # shortformer: W_pos is NOT added to the residual stream
+for L in 0..1:
+  qk_in = resid_preL + pos_embed  # W_pos enters Q and K inputs only
+  v_in  = resid_preL              # V gets no position embedding
+  q = qk_in @ W_Q[L] + b_Q[L]     # attn.hook_q  [pos, 12, 64]
+  k = qk_in @ W_K[L] + b_K[L]     # attn.hook_k
+  v = v_in  @ W_V[L] + b_V[L]     # attn.hook_v
+  scores  = (q · k) / sqrt(64)    # attn.hook_attn_scores [12, qpos, kpos]; masked kpos &gt; qpos
+  pattern = softmax(scores, -1)   # attn.hook_pattern
+  z       = pattern @ v           # attn.hook_z  [pos, 12, 64]
+  result  = z @ W_O[L]            # attn.hook_result [pos, 12, 768] (per head, before summing)
+  attn_out = Σ_h result + b_O[L]  # hook_attn_out
+  resid_post = resid_preL + attn_out   # hook_resid_post (no MLP, no LayerNorm, no resid_mid)
+logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
+    <ul>
+      <li>Use TransformerLens hook names exactly: <code>hook_embed</code>, <code>hook_pos_embed</code>, <code>blocks.{L}.hook_resid_pre</code>, <code>blocks.{L}.attn.hook_{q,k,v,attn_scores,pattern,z,result}</code>, <code>blocks.{L}.hook_attn_out</code>, <code>blocks.{L}.hook_resid_post</code>. Also expose ARENA cache aliases, for example <code>cache["pattern", 0]</code>.</li>
+      <li>Masking: TransformerLens uses <code>-inf</code>. Kernels may use a large finite negative value, but the masked probabilities must come out exactly 0.</li>
+      <li>Row 50277 of the vocabulary is an unused padding row. The tokenizer's highest ID is 50276. Show this in the UI.</li>
+      <li>The bias tensors exist in the checkpoint. ARENA describes the model as having "no biases", which suggests they are approximately zero. The converter must report each bias's maximum absolute value, and the forward pass must still apply the biases.</li>
+      <li>Model identifiers shown in the UI and docs: the TransformerLens config above and <code>callummcdougall/attn_only_2L_half</code>.</li>
+    </ul>
+    <p>Organize the numerics as one op graph with three interchangeable executors that share a single analysis layer:</p>
+    <ul>
+      <li>a WebGPU executor (primary);</li>
+      <li>a WASM executor (fallback);</li>
+      <li>a plain TypeScript <code>Float32Array</code> reference executor, which serves as the test oracle and is not shown in the UI.</li>
+    </ul>
+    <p>Caching, hooks, ablation, and every analysis must work identically on all executors.</p>
+
+    <h2>Model data and provenance</h2>
+    <p>Upstream checkpoint facts. Embed these in the code and show them in a Provenance panel:</p>
+    <table>
+      <tr><th>Repo</th><td><code>callummcdougall/attn_only_2L_half</code>, commit <code>3a3d92c6d6491233925c2649582128538a16843a</code></td></tr>
+      <tr><th>File</th><td><code>attn_only_2L_half.pth</code>, 183,933,661 bytes, SHA-256 <code>7c8ccf06cc7d1a8c4820285d32fafd74f3b553c9af1b6765a1fbad094070578f</code>. Appears to be FP16.</td></tr>
+      <tr><th>License</th><td>None declared on the repo, and none on the ARENA materials repo. Show “No license declared — weights are not redistributed by this app.”</td></tr>
+      <tr><th>Parameters</th><td>83,574,886: W_E and W_U each 38,613,504; W_pos 1,572,864; 2,362,368 per attention layer, including biases; b_U 50,278. Buffers (<code>mask</code>, <code>IGNORE</code>) are dropped and rebuilt on the client.</td></tr>
+    </table>
+    <p><strong>Artifact format.</strong> A <code>manifest.json</code> containing:</p>
+    <ul>
+      <li>format version and upstream SHA-256;</li>
+      <li>for each tensor: name, shape, dtype, quantization, and the shard plus byte range;</li>
+      <li>for each shard: size and SHA-256;</li>
+      <li>the artifact checksum, defined as the SHA-256 of the canonical manifest.</li>
+    </ul>
+    <p>Tensor data lives in content-hashed binary shards of at most 20 MiB, little-endian. The 20 MiB cap keeps the artifact deployable under Cloudflare's 25 MiB per-file limit if the license question is ever resolved. Two variants:</p>
+    <ul>
+      <li><code>int8</code> (default, about 90 MB):
+        <ul>
+          <li>W_E is quantized per row (per token).</li>
+          <li>W_U is quantized per column (per output token).</li>
+          <li>Quantization is symmetric with <code>scale = max|x| / 127</code>, stored as FP16.</li>
+          <li>All other tensors are FP16.</li>
+        </ul>
+      </li>
+      <li><code>fp16</code> (reference, about 167 MB): every tensor in FP16, bit-identical to the checkpoint.</li>
+    </ul>
+    <p><strong>Two ways to get weights:</strong></p>
+    <ol>
+      <li><code>scripts/convert.py</code>:
+        <ul>
+          <li>Pinned to <code>torch</code> and <code>transformer-lens==2.17.*</code>; document any version it cannot run with.</li>
+          <li>Downloads the checkpoint once and verifies its SHA-256.</li>
+          <li>Writes both artifact variants to a gitignored <code>weights/</code> directory.</li>
+          <li>Writes reference fixtures (see Testing).</li>
+        </ul>
+        In development, <code>vite</code> serves <code>weights/</code> locally. The production build must exclude it, and a build check must fail if any weight shard ends up in <code>dist/</code>.
+      </li>
+      <li>In-app import:
+        <ul>
+          <li>The user drag-drops, or picks with a file picker, either a converted artifact folder or zip, or the raw <code>.pth</code>.</li>
+          <li><code>.pth</code> files are parsed in a Web Worker with a restricted unpickler. It reads the zip, then the pickle, and allow-lists only the opcodes and globals needed to rebuild tensors (<code>torch._utils._rebuild_tensor_v2</code>, storage types, <code>collections.OrderedDict</code>). It rejects everything else with a clear error.</li>
+          <li>The file is verified against the known SHA-256, quantized in the worker, and stored in IndexedDB or Cache Storage keyed by artifact checksum.</li>
+          <li>Call <code>navigator.storage.persist()</code>. Show storage usage and a “forget weights” button.</li>
+          <li>Nothing leaves the device.</li>
+        </ul>
+      </li>
+    </ol>
+    <p><strong>Synthetic demo model.</strong> This is the default until weights are imported.</p>
+    <ul>
+      <li>It is generated deterministically in the browser from a fixed seed, so no download is needed.</li>
+      <li>It has the exact architecture and is hand-constructed with a planted circuit: L0 head 7 is a previous-token head via a positional QK circuit, and L1 heads 4 and 10 are induction heads that K-compose with 0.7 and have a copying OV circuit. Every analysis therefore shows meaningful structure.</li>
+      <li>A persistent banner labels it “Synthetic — not pretrained”. Never present its numbers as the pretrained model's.</li>
+      <li>The README explains how the circuit was planted.</li>
+    </ul>
+    <p>Never fetch model data from Hugging Face, GitHub, or any other remote at runtime.</p>
+
+    <h2>Tokenizer</h2>
+    <ul>
+      <li>Use <code>@huggingface/tokenizers</code> with <code>tokenizer.json</code> and <code>tokenizer_config.json</code> from <code>EleutherAI/gpt-neox-20b</code> (Apache-2.0, about 2.1 MB raw, about 593 KB gzipped). They are vendored as static assets with attribution and are not imported into the JS bundle.</li>
+      <li>Encode without post-processor special tokens, then prepend BOS id 0 when “prepend BOS” is on (the default), matching TransformerLens <code>to_tokens</code>.</li>
+      <li>Handle these correctly:
+        <ul>
+          <li>NFC normalization;</li>
+          <li>the 23 added whitespace-run tokens (ids 50254–50276), matched before pre-tokenization;</li>
+          <li>byte-level display, rendering <code>Ġ</code> and <code>Ċ</code> legibly and showing partial UTF-8 tokens as bytes or <code>�</code> rather than mangled text.</li>
+        </ul>
+      </li>
+      <li>Users can also enter raw token IDs and generate random-token sequences.</li>
+    </ul>
+
+    <h2>Runtime and backends</h2>
+    <ul>
+      <li>Run model execution in a dedicated Web Worker so the UI never blocks.</li>
+      <li><strong>WebGPU:</strong>
+        <ul>
+          <li>f32 compute; do not use <code>shader-f16</code>.</li>
+          <li>Int8 weights are packed four per <code>u32</code> and unpacked in WGSL, using <code>unpack4xI8</code> when the <code>packed_4x8_integer_dot_product</code> language feature exists and manual bit extraction otherwise.</li>
+          <li>Each embedding matrix stays within the default 128 MiB <code>maxStorageBufferBindingSize</code>. Check the adapter limits and fail over to WASM with a clear message if they are insufficient.</li>
+          <li>Handle <code>device.lost</code>: stop all in-flight work immediately, show the reason, and offer “retry WebGPU” or “switch to WASM”.</li>
+        </ul>
+      </li>
+      <li><strong>WASM:</strong>
+        <ul>
+          <li>A small Rust crate built with <code>wasm-bindgen</code> and <code>+simd128</code>, single-threaded, loaded through Vite <code>?init</code> or <code>vite-plugin-wasm</code>.</li>
+          <li>Kernels: matmul, fused int8-dequant matmul, masked softmax, and the attention einsums.</li>
+          <li>The dequantization formula and reduction order must be documented and shared with WGSL.</li>
+          <li>WASM threads are out of scope for v1, so cross-origin isolation is not required.</li>
+        </ul>
+      </li>
+      <li>A backend selector offers <em>Auto / WebGPU / WASM</em>. Auto picks WebGPU when an adapter and device are obtained and otherwise falls back silently but visibly. Switching backends re-runs the current prompt and shows the max-abs-diff against the previous backend.</li>
+      <li><strong>Deployment headers</strong> (<code>public/_headers</code>):
+        <ul>
+          <li>CSP: <code>default-src 'self'; connect-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; img-src 'self' data: blob:; style-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'</code></li>
+          <li><code>Cache-Control: public, max-age=31536000, immutable</code> for hashed assets.</li>
+          <li>A short cache lifetime for <code>index.html</code> and the service worker.</li>
+        </ul>
+      </li>
+      <li><strong>Service worker:</strong> caches the app shell, the WASM, and the tokenizer for offline use. It never caches or intercepts imported weights, which live in IndexedDB or Cache Storage under the app's control. Base progress bars on the byte sizes in the manifest, not on <code>Content-Length</code>.</li>
+    </ul>
+
+    <h2>Interactions and UI</h2>
+    <p>Provide a clean, information-dense app shell with a responsive but research-oriented layout. The workflow should feel like CircuitsVis meets Transformer Explainer.</p>
+    <ul>
+      <li><strong>Model status bar:</strong>
+        <ul>
+          <li>model mode (Synthetic / Pretrained int8 / Pretrained fp16);</li>
+          <li>active backend;</li>
+          <li>artifact checksum (short form, with a copy button);</li>
+          <li>an import-weights entry point.</li>
+        </ul>
+      </li>
+      <li><strong>Prompt controls:</strong>
+        <ul>
+          <li>Free text, with live tokenization shown as token chips.</li>
+          <li>A raw token ID input.</li>
+          <li>A prepend-BOS toggle.</li>
+          <li>A repeated random-token generator: <code>[BOS, r, r]</code>, where <code>r</code> has length <code>seq_len</code>, default 50, and comes from a seeded PRNG with the seed shown.</li>
+          <li>A sequence-length control and a run/cache button.</li>
+          <li>Validation: reject inputs longer than <code>n_ctx</code>, and warn above a soft default cap of 512 tokens.</li>
+        </ul>
+      </li>
+      <li><strong>Generation:</strong>
+        <ul>
+          <li>Greedy, temperature, and top-k sampling, with a seeded PRNG.</li>
+          <li>A max-new-tokens setting.</li>
+          <li>Step, play, pause, and replay controls that animate how attention patterns grow as tokens are appended.</li>
+          <li>Every step's cache can be inspected.</li>
+          <li>Generation reuses the KV cache, or recomputes for short sequences, which is acceptable.</li>
+        </ul>
+      </li>
+      <li><strong>Token table:</strong> for each position show:
+        <ul>
+          <li>token ID and decoded string;</li>
+          <li>role: BOS, first half, second half, or induction target;</li>
+          <li>log-prob of the actual next token and its per-token loss;</li>
+          <li>top-5 predictions with probabilities;</li>
+          <li>direct-path vs layer-0 vs layer-1 contribution to the correct logit.</li>
+        </ul>
+        Highlight the repeated halves when a repetition is detected.
+      </li>
+      <li><strong>Activation explorer:</strong>
+        <ul>
+          <li>A searchable, sortable tree of every hook, showing name, shape, dtype, and size.</li>
+          <li>Tensors are materialized lazily, only when expanded, previewed, or exported.</li>
+          <li>Never materialize full <code>[pos, 50278]</code> logits unless explicitly requested, and show a size warning when that happens.</li>
+          <li>Slicing by layer, head, and position before viewing.</li>
+          <li>Export the selection locally as JSON, CSV, or <code>.npy</code>, with a size estimate shown before export.</li>
+        </ul>
+      </li>
+      <li><strong>Attention overview:</strong>
+        <ul>
+          <li>For each layer, a grid of 12 head cards. Each card holds a dest×source heatmap with tokens on both axes.</li>
+          <li>Causally impossible cells are drawn as visibly masked, using a hatched pattern rather than just a color.</li>
+          <li>Tooltips show exact values.</li>
+          <li>Color-scale controls: linear or log, and shared or per-head range.</li>
+          <li>Each card shows the head's score badges.</li>
+        </ul>
+      </li>
+      <li><strong>Head detail view:</strong>
+        <ul>
+          <li>An enlarged heatmap with zoom and pan.</li>
+          <li>Configurable destination and source bands.</li>
+          <li>Overlays for the induction stripe (offset <code>1 − seq_len</code>) and the previous-token stripe.</li>
+          <li>A table of exact values.</li>
+          <li>Q, K, and V decomposition for the selected cell.</li>
+        </ul>
+      </li>
+      <li><strong>Circuit graph:</strong>
+        <ul>
+          <li>An interactive node-link diagram of tokens, heads, and the induction circuit.</li>
+          <li>Node size and color encode a chosen score or ablation effect.</li>
+          <li>Edge labels show the composition type and score, or the attention weight.</li>
+          <li>The canonical circuit diagram (0.7 → 1.4 and 1.10) uses a static, deterministic layout.</li>
+        </ul>
+      </li>
+      <li><strong>Timeline and run stats:</strong>
+        <ul>
+          <li>Total runtime, broken down into tokenize, forward/prefill, cache build, and analysis.</li>
+          <li>Sequence length, backend, and model mode.</li>
+          <li>Memory:
+            <ul>
+              <li>GPU buffer bytes, from a ledger that wraps <code>createBuffer</code> and <code>destroy</code>;</li>
+              <li>the WASM heap size;</li>
+              <li><code>performance.measureUserAgentSpecificMemory()</code>, only when it is available. Otherwise show “n/a”.</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><strong>Provenance panel:</strong>
+        <ul>
+          <li>the upstream facts above;</li>
+          <li>parameter counts per tensor;</li>
+          <li>the quantization scheme and the int8-vs-fp16 drift report;</li>
+          <li>maximum absolute value of each bias;</li>
+          <li>the tokenizer source and license.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>Interpretability analyses</h2>
+    <p>Reproduce the ARENA 1.2 definitions exactly, and document each formula in the UI with an info popover and in the README. <code>P = pattern[L][h]</code> has shape <code>[q, k]</code>.</p>
+    <ol>
+      <li><strong>Attention head classifier.</strong>
+        <ul>
+          <li>ARENA detectors:
+            <ul>
+              <li>current-token = <code>mean(diag(P))</code></li>
+              <li>previous-token = <code>mean(diag(P, −1))</code></li>
+              <li>first-token = <code>mean(P[:, 0])</code></li>
+              <li>induction = <code>mean(diag(P, 1 − seq_len))</code> on <code>[BOS, r, r]</code></li>
+            </ul>
+            The default threshold is 0.4, and it is configurable.
+          </li>
+          <li>Also offer TransformerLens <code>detect_head</code> patterns (previous_token_head, duplicate_token_head, induction_head), with the <code>mul</code> and <code>abs</code> error measures and <code>exclude_bos</code> / <code>exclude_current_token</code>.</li>
+          <li>Show a 2×12 grid with scores, thresholds, and a plain-English reason for each label, for example “prev-token score 0.93 &gt; 0.4”.</li>
+        </ul>
+      </li>
+      <li><strong>Per-token loss and direct logit attribution.</strong>
+        <ul>
+          <li>Per-token loss is <code>−log_softmax(logits)[s, tok[s+1]]</code>, plotted with the first and second halves marked and their means shown.</li>
+          <li>DLA follows ARENA <code>logit_attribution</code>:
+            <ul>
+              <li><code>W_c = W_U[:, tokens[1:]]</code></li>
+              <li>components are <code>[embed, 12 × L0 result, 12 × L1 result]</code>, giving shape <code>[seq−1, 25]</code></li>
+              <li>attribution = <code>einsum(W_c, component[:-1])</code></li>
+            </ul>
+            W_U is not centred, and b_U and b_O are excluded but reported.
+          </li>
+          <li>Show a per-head chart and a combined direct / L0 / L1 stacked chart for each position.</li>
+          <li>Explain in plain English why the loss drops in the second half: induction heads copy the token that followed the earlier occurrence.</li>
+        </ul>
+      </li>
+      <li><strong>Zero ablation.</strong>
+        <ul>
+          <li>Toggle any set of heads to be zero-ablated at <code>hook_z</code>, i.e. <code>z[:, h, :] = 0</code>. A per-head option ablates at <code>hook_v</code> instead, to reproduce ARENA's ablation of 0.7's values.</li>
+          <li>Report the change in loss (ablated minus clean), using ARENA's <code>get_ablation_scores</code> convention: loss over the last <code>seq_len − 1</code> positions.</li>
+          <li>Report changes in attention patterns and in head scores, especially the induction score of 1.4 and 1.10.</li>
+          <li>Provide a one-click “ablate each head” sweep that produces a 2×12 heatmap of loss increase.</li>
+        </ul>
+      </li>
+      <li><strong>Circuit composition.</strong>
+        <ul>
+          <li>Definitions:
+            <ul>
+              <li><code>comp(W_A, W_B) = ‖W_A W_B‖_F / (‖W_A‖_F ‖W_B‖_F)</code></li>
+              <li><code>W_OV = W_V W_O</code> and <code>W_QK = W_Q W_Kᵀ</code>, each 768×768 but rank 64</li>
+            </ul>
+            Compute them with factored low-rank products and never materialize 768×768 products unnecessarily.
+          </li>
+          <li>For each pair of L0 head <code>i</code> and L1 head <code>j</code>:
+            <ul>
+              <li>Q-composition = <code>comp(W_OV⁰ᵢ, W_QK¹ⱼ)</code></li>
+              <li>K-composition = <code>comp(W_OV⁰ᵢ, (W_QK¹ⱼ)ᵀ)</code></li>
+              <li>V-composition = <code>comp(W_OV⁰ᵢ, W_OV¹ⱼ)</code></li>
+            </ul>
+            Each is shown as a 12×12 grid.
+          </li>
+          <li>Random baseline, as in ARENA: 300 samples of products of <code>[768, 64]</code> Kaiming-uniform factors, reporting mean and standard deviation. Show scores both raw and baseline-subtracted.</li>
+          <li>Highlight 0.7 → 1.4 and 0.7 → 1.10 K-composition.</li>
+        </ul>
+      </li>
+      <li><strong>Full circuits.</strong>
+        <ul>
+          <li>The OV circuit <code>W_E W_OV W_U</code> for 1.4, for 1.10, and for the two stacked together. Report top-1 and top-5 accuracy along the diagonal, computed in row batches and never materializing 50278² entries at once.</li>
+          <li>The positional QK circuit for 0.7: <code>W_pos W_QK W_posᵀ / 8</code>, masked and softmaxed.</li>
+          <li><code>decompose_qk_input</code> and the decomposed attention scores for 1.4, over the 14 components <code>[embed, pos_embed, 12 L0 heads]</code>.</li>
+        </ul>
+      </li>
+      <li><strong>End-to-end induction narrative.</strong> A guided, stepwise walkthrough of the canonical path:
+        <ol>
+          <li>The first-half token <code>A</code> is followed by <code>B</code>.</li>
+          <li>Previous-token head 0.7 at the first <code>B</code> attends to <code>A</code> and writes “previous token was A” into the residual stream through its OV circuit.</li>
+          <li>The second-half <code>A</code> queries in 1.4 and 1.10.</li>
+          <li>Through K-composition with 0.7's output, those queries match the key at the first <code>B</code>.</li>
+          <li>The heads attend to the first <code>B</code>.</li>
+          <li>Their OV circuit copies <code>B</code> into the logits.</li>
+        </ol>
+        Each step links to and highlights the exact tokens, attention cells, tensors, weight matrices, and scores involved. The steps work on any repeated sequence the user picks, not only a hard-coded one.
+      </li>
+    </ol>
+
+    <h2>Transformer Explainer-inspired presentation</h2>
+    <p>Borrow the strongest UX ideas from Transformer Explainer, but do not copy its design verbatim:</p>
+    <ul>
+      <li>progressive disclosure: a simple overview first, then expandable layer, head, and tensor detail;</li>
+      <li>flow diagrams that let users inspect the underlying computation step by step;</li>
+      <li>color-coded tensor shapes and a readable description of each operation, written for ARENA-level learners;</li>
+      <li>hover and selection coordinated across attention cells, token chips, graphs, and the selected tensor rows;</li>
+      <li>attention animation during generation that aids intuition without hiding exact values, with a <code>prefers-reduced-motion</code> fallback.</li>
+    </ul>
+
+    <h2>Data, state, and performance</h2>
+    <ul>
+      <li>Keep parameters and activations in typed arrays or GPU buffers.</li>
+      <li>Cache activations in memory, keyed by (artifact checksum, tokens, ablation set, backend). Persist to IndexedDB only for short sequences, and evict on an LRU basis.</li>
+      <li>Debounce filters and redraws. Render large heatmaps with Canvas and small or interactive ones with SVG.</li>
+      <li>Never materialize full-vocabulary logits unless asked. Loss, DLA, and top-k only need targeted <code>W_U</code> columns or a streamed max and log-sum-exp.</li>
+      <li>Keep sequences short by default (repeated tokens with <code>seq_len</code> = 50 gives 101 tokens). Validate before dispatching GPU work.</li>
+      <li>Performance targets on a recent laptop with WebGPU, for a 101-token forward pass with a full cache: no more than 150 ms on WebGPU and no more than 1.5 s on WASM. Report the measured times.</li>
+      <li>Bundle budget: application JS no more than 250 KB gzipped and WASM no more than 150 KB gzipped, excluding the tokenizer JSON.</li>
+    </ul>
+
+    <h2>Quality and accessibility</h2>
+    <ul>
+      <li>Compact and comfortable density modes. Full keyboard navigation, including arrow keys to move across heatmap cells and Enter to select.</li>
+      <li>Every visualization has an accessible table or text summary.</li>
+      <li>Meet WCAG AA contrast. Never rely on color alone: show exact values or symbols in tooltips and summaries, and use colorblind-safe scales.</li>
+      <li>Support zoom and pan on heatmaps and graphs, with the controls reachable by keyboard.</li>
+      <li>Every failure gets a clear, actionable UI state:
+        <ul>
+          <li>no WebGPU;</li>
+          <li>device lost;</li>
+          <li>a weights checksum mismatch;</li>
+          <li>a rejected <code>.pth</code> (unsafe pickle);</li>
+          <li>quota exceeded;</li>
+          <li>a sequence that is too long;</li>
+          <li>an empty prompt.</li>
+        </ul>
+      </li>
+      <li>Light and dark themes.</li>
+    </ul>
+
+    <h2>Testing and verification</h2>
+    <p>Tooling:</p>
+    <ul>
+      <li>Vitest for unit and parity tests. They run in Node with the <code>webgpu</code> npm package (Dawn) so the same WGSL can execute there.</li>
+      <li>Playwright with Chromium for end-to-end tests, run headless with <code>--enable-unsafe-webgpu --enable-features=Vulkan --use-vulkan=swiftshader --use-angle=swiftshader</code>.</li>
+      <li>Fallback tests stub <code>navigator.gpu</code> as <code>undefined</code>, and separately stub <code>requestAdapter()</code> to resolve to <code>null</code>.</li>
+      <li>If WebGPU cannot run in the environment, the WASM and reference paths must still be fully tested, and the report must say so.</li>
+    </ul>
+    <p>There is also an in-app <strong>Verify</strong> panel that runs the same checks in the user's browser on the active backend.</p>
+    <ul>
+      <li><strong>Backend parity:</strong> WebGPU vs WASM vs the TS reference, using fixture tensors at sequence lengths 1, 8, 101, and 512.
+        <ul>
+          <li>Per-kernel tolerance: <code>rtol = 1e-4</code>, <code>atol = 1e-5</code>.</li>
+          <li>Logits after the full model: <code>atol = 1e-3</code>, <code>rtol = 1e-3</code>, with identical top-5 sets.</li>
+        </ul>
+      </li>
+      <li><strong>Model parity, tier 1 (FP16 artifact vs TransformerLens):</strong>
+        <ul>
+          <li><code>convert.py</code> writes fixtures from TransformerLens: tokens, which include ARENA's exact repeated-token batch because PyTorch's RNG cannot be reproduced in the browser; selected activations (patterns, z, result, resid_post); logit slices; and analysis outputs (detector scores, induction scores, DLA, ablation scores, composition grids).</li>
+          <li>Required tolerances: patterns <code>atol = 1e-4</code>, logits <code>atol = 1e-3</code>, DLA sum identity <code>atol = 1e-3</code>.</li>
+          <li>The fixtures are small, gitignored, and live with the weights. CI runs tier 1 only when they are present, and the synthetic-model fixtures always run.</li>
+        </ul>
+      </li>
+      <li><strong>Model parity, tier 2 (int8 vs FP16):</strong> report and assert:
+        <ul>
+          <li>top-1 agreement on at least 99% of positions;</li>
+          <li>mean loss difference of no more than 0.05 nats;</li>
+          <li>identical head classifications;</li>
+          <li>induction and detector scores within 0.02.</li>
+        </ul>
+      </li>
+      <li><strong>Tokenizer:</strong> exact ID equality against Python-generated fixtures. The corpus covers multiple spaces, tabs, newlines, contractions, digits, emoji, combining accents, CJK, leading spaces, and the ARENA sample text.</li>
+      <li><strong>Analysis correctness:</strong> unit tests on small hand-built tensors for:
+        <ul>
+          <li>the detector diagonals, including the <code>1 − seq_len</code> offset;</li>
+          <li><code>detect_head</code> with <code>mul</code> and <code>abs</code>;</li>
+          <li>the DLA identity (sum of components equals the correct-token logit minus the bias terms);</li>
+          <li>ablation effects;</li>
+          <li>composition scores against a dense computation;</li>
+          <li>top-k circuit accuracy.</li>
+        </ul>
+      </li>
+      <li><strong>Importer:</strong>
+        <ul>
+          <li>The restricted unpickler loads a small fixture <code>.pth</code> generated by <code>convert.py</code>.</li>
+          <li>It rejects a malicious pickle that uses <code>os.system</code> or <code>builtins.eval</code> as globals.</li>
+          <li>A checksum mismatch is rejected.</li>
+        </ul>
+      </li>
+      <li><strong>Privacy:</strong>
+        <ul>
+          <li>The Playwright suite records all network requests during a full session (load, import, run, generate, export) and asserts that every one is same-origin and that none occurs after import other than static assets.</li>
+          <li>A test asserts that the CSP header is present in <code>_headers</code>.</li>
+          <li>A build check asserts that <code>dist/</code> contains no weight shards.</li>
+        </ul>
+      </li>
+      <li><strong>Interaction tests:</strong>
+        <ul>
+          <li>backend switching, including auto-fallback;</li>
+          <li>token selection and hover coordination;</li>
+          <li>heatmap rendering;</li>
+          <li>the generation step and replay;</li>
+          <li>export of JSON, CSV, and NPY;</li>
+          <li>offline reload through the service worker;</li>
+          <li>every failure and empty state listed above.</li>
+        </ul>
+      </li>
+    </ul>
+    <p>Run the build, lint, type-check, and all test commands, and report the actual results.</p>
+
+    <h2>Documentation and structure</h2>
+    <p>Document in <code>README.md</code>:</p>
+    <ul>
+      <li>setup, conversion, build, development, test, and Cloudflare Pages deploy commands (<code>wrangler pages deploy dist</code>);</li>
+      <li>WebGPU and WebAssembly browser support and the expected fallback behavior. WebGPU is available in Chrome/Edge 113+, Safari 26, and Firefox 141+ on Windows and 145+ on Apple Silicon. Linux and Android vary; everything else falls back to WASM;</li>
+      <li>model provenance, the license situation and why weights are bring-your-own, the artifact format, the quantization scheme, the conversion steps, and the expected checksums;</li>
+      <li>the exact forward-pass semantics, including shortformer;</li>
+      <li>the interpretability methods, formulas, thresholds, and limitations, including int8 effects and the biases excluded from DLA;</li>
+      <li>the induction-circuit narrative and the ARENA exercise identities the app reproduces;</li>
+      <li>how the synthetic model's circuit was planted.</li>
+    </ul>
+    <p>Organize source by domain, for example:</p>
+    <ul>
+      <li><code>src/backends/{webgpu,wasm,reference}</code></li>
+      <li><code>src/model</code> (op graph, hooks, cache)</li>
+      <li><code>src/weights</code> (manifest, importer, unpickler, quantization, storage)</li>
+      <li><code>src/tokenizer</code></li>
+      <li><code>src/analysis</code></li>
+      <li><code>src/viz</code></li>
+      <li><code>src/ui</code> and <code>src/state</code></li>
+      <li><code>crates/kernels</code></li>
+      <li><code>scripts/</code></li>
+      <li><code>tests/{unit,parity,e2e}</code></li>
+    </ul>
+    <p>Use small, focused modules. Add concise inline comments only where formulas or numerical semantics are non-obvious.</p>
+
+    <h2>Acceptance criteria</h2>
+    <ol>
+      <li><code>npm ci &amp;&amp; npm run build</code> produces a static <code>dist/</code> that runs under <code>vite preview</code> and deploys to Cloudflare Pages unchanged. <code>dist/</code> contains no weight shards, and every file is under 25 MiB.</li>
+      <li>On first load with no weights, the synthetic model runs end to end on WebGPU or WASM, and the “Synthetic — not pretrained” banner is visible on every view.</li>
+      <li>Importing <code>attn_only_2L_half.pth</code> or a converted artifact verifies the SHA-256 and runs fully offline. After a reload with the network disabled, the cached weights load and the app works.</li>
+      <li>With pretrained weights on repeated random tokens (<code>seq_len</code> = 50, batch 10):
+        <ul>
+          <li>heads 1.4 and 1.10 are classified as induction heads (score &gt; 0.6), with 1.10 above 1.4;</li>
+          <li>head 0.7 is classified as a previous-token head;</li>
+          <li>the mean loss on the second half is far below the first (about 3.4 vs about 14 in ARENA's sample; require at least a 3× reduction).</li>
+        </ul>
+      </li>
+      <li>In the K-composition grid, 0.7 → 1.4 and 0.7 → 1.10 are the two largest entries and exceed the random-baseline mean by at least 3σ. V-composition into 1.4 and 1.10 is near the baseline.</li>
+      <li>Full OV circuit top-1 diagonal accuracy is about 30.8% for 1.4 alone and about 95.6% for 1.4 and 1.10 stacked, within ±2 percentage points on FP16.</li>
+      <li>Zero-ablating 0.7 at <code>hook_v</code> drops 1.4's induction score from about 0.68 to near 0. The ablate-each-head sweep ranks 0.7, 1.4, and 1.10 as the most harmful to ablate.</li>
+      <li>The DLA components sum to the correct-token logit (excluding biases) within <code>atol = 1e-3</code> at every position.</li>
+      <li>Tier-1 and tier-2 parity, backend parity, and tokenizer fixtures all pass at the tolerances stated above.</li>
+      <li>The privacy test records zero cross-origin requests across a full session, and the CSP is deployed.</li>
+      <li>Forcing WASM (by stubbing WebGPU) yields identical classifications and analyses, and the UI shows “WASM”.</li>
+      <li>Every visualization has an accessible text or table equivalent. The main workflow (enter prompt → run → select head → view detail → ablate) is completable by keyboard alone.</li>
+      <li>The performance targets and bundle budget are met, or any miss is reported with measurements.</li>
+      <li>Every interaction in the narrative's six steps highlights the correct tokens, cells, and tensors on a user-chosen repeated sequence.</li>
+    </ol>
+
+    <h2>Revision checklist</h2>
+    <p>Before delivery, verify each acceptance criterion and explicitly report:</p>
+    <ul>
+      <li>the commands run (install, type-check, lint, unit, parity, e2e, build) and their actual pass/fail output, never a summary written from memory;</li>
+      <li>which backends were actually exercised in tests: real WebGPU, SwiftShader, Dawn-in-Node, or stubbed. If any acceptance criterion could not be checked on real WebGPU, say so;</li>
+      <li>whether tier-1 parity ran against real TransformerLens fixtures, or only synthetic ones because the weights were unavailable in the build environment;</li>
+      <li>the measured values for criteria 4–8: induction, previous-token, and loss numbers; composition top pairs; OV accuracies; ablation effects; and the DLA residual;</li>
+      <li>the int8-vs-fp16 drift report and the maximum absolute value of each bias;</li>
+      <li>measured runtimes, bundle sizes, and the largest file in <code>dist/</code>;</li>
+      <li>the privacy-test request log summary and the deployed headers;</li>
+      <li>any deviation from this spec, the reason for it, and known limitations or follow-ups;</li>
+      <li>confirmation that no pretrained weights, tokens, or activations are bundled or transmitted, and that synthetic results are never labelled as pretrained.</li>
+    </ul>
+  </body>
+</html>
