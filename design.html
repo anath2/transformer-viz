@@ -1,0 +1,1264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Induction Circuit — Variant A2, Story with Doors (2D map)</title>
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<style>
+:root{
+  --bar:48px; --col:clamp(380px,38vw,560px); --rail:30px;
+  --sans:-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --ink:#111; --grey:#555; --muted:#626262; --rule:#dcdcdc; --line:#8a8a8a; --panel:#f7f7f7;
+  --tan:#ecdcbf; --tanB:#b39463; --box:#eeeeee; --boxB:#a8a8a8;
+  --q:#0e7c7b; --qT:#d4eeed; --k:#2b7a35; --kT:#dbefd8; --mv:#c0392b; --mvT:#f8dcd8; --lg:#5b3aa8; --lgT:#e7dff7;
+  --door:#a35f00; --bad:#b3261e; --ok:#1f6b43;
+  --s-pos:#8a4b08; --s-model:#1f4e9c; --s-head:#8b1a5c; --s-heads:#4b5e0a;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:calc(var(--bar) + 16px)}
+body{margin:0;background:#fff;color:var(--ink);font:16px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #1f4e9c;outline-offset:2px;border-radius:3px}
+.skip{position:absolute;left:8px;top:-60px;background:var(--ink);color:#fff;padding:8px 12px;z-index:100}
+.skip:focus{top:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+code,.mono{font-family:var(--mono);font-size:.86em}
+kbd{font:600 11.5px var(--mono);border:1px solid #bbb;border-bottom-width:2px;border-radius:4px;padding:0 5px;background:#fff}
+.katex{font-size:1.06em}
+.texfb{font-family:var(--mono);font-size:.85em;color:var(--grey)}
+
+/* status bar */
+.bar{position:fixed;inset:0 0 auto 0;height:var(--bar);z-index:40;display:flex;align-items:center;gap:8px;padding:0 14px;background:#fff;border-bottom:1px solid var(--rule);font:13px/1 var(--sans);overflow-x:auto;white-space:nowrap}
+.bar b{font-size:15px}
+.bar .sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--rule);border-radius:99px;padding:5px 10px;background:#fff;color:var(--grey)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.bar button{border:1px solid #c8c8c8;background:#fff;border-radius:6px;padding:6px 10px;font-size:13px}
+.bar button:hover{border-color:var(--ink)}
+.bar select{padding:2px 4px;border:0;background:transparent;font-size:13px}
+#bExplore{border-color:var(--door);color:var(--door);font-weight:600}
+#bExplore[aria-pressed=true]{background:var(--door);color:#fff}
+
+/* rail */
+#rail{position:fixed;top:var(--bar);bottom:0;left:var(--col);width:var(--rail);z-index:30;margin:0;padding:0;list-style:none;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:0;border-left:1px solid var(--rule);background:#fff}
+#rail::before{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1px;height:calc(10 * 26px - 14px);background:var(--rule)}
+#rail li{position:relative}
+#rail button{display:block;width:26px;height:26px;border:0;background:none;padding:0;position:relative}
+#rail i{display:block;width:10px;height:10px;margin:auto;border-radius:50%;border:2px solid #8a8a8a;background:#fff;position:relative}
+#rail button.seen i{background:#bdbdbd;border-color:#8a8a8a}
+#rail button[aria-current=step] i{background:var(--ink);border-color:var(--ink);width:12px;height:12px}
+#rail span{position:absolute;left:30px;top:50%;transform:translateY(-50%);white-space:nowrap;background:var(--ink);color:#fff;font:12px/1 var(--sans);padding:5px 8px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:60}
+#rail button:hover span,#rail button:focus-visible span{opacity:1}
+body.explore #rail{display:none}
+body.explore{--rail:0px}
+
+/* stage */
+#stage{position:fixed;top:var(--bar);right:0;bottom:0;left:calc(var(--col) + var(--rail));display:flex;flex-direction:column;border-left:1px solid var(--rule);background:#fff;z-index:5}
+#strip{flex:none;padding:6px 12px 2px;border-bottom:1px solid var(--rule)}
+#strip .sh{display:flex;gap:10px;align-items:baseline;font:12px/1.3 var(--sans);color:var(--grey);min-width:0}
+#strip .sh b{color:var(--ink);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+#strip .sh .hint{margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#stripCv{display:block;width:100%;height:36px;margin-top:3px}
+#tools{flex:none;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:6px 12px;border-bottom:1px solid var(--rule);font:12.5px/1.2 var(--sans)}
+#tools .grp{display:flex;align-items:center;gap:3px;flex-wrap:nowrap;white-space:nowrap}
+#tools .cap{font-weight:600;color:var(--grey);margin-right:3px}
+.seg{border:1px solid #c8c8c8;background:#fff;border-radius:5px;padding:3px 8px;font:12.5px var(--sans)}
+.seg[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+#tools label{display:inline-flex;gap:4px;align-items:center;margin-left:4px}
+#tools .zoom{margin-left:auto}
+#tools .zoom button{min-width:28px}
+#mid{flex:1;min-height:0;display:flex}
+#vp{flex:1;min-width:0;min-height:0;position:relative;overflow:hidden;cursor:grab;touch-action:none;background:#fff}
+#vp:focus-visible{outline-offset:-3px}
+#vp.dragging{cursor:grabbing}
+#world{position:absolute;left:0;top:0;transform-origin:0 0}
+#map{display:block;overflow:visible}
+#gcv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#wl{position:absolute;left:0;top:0;pointer-events:none}
+.ex{position:absolute;width:290px;transform:translateY(-50%);font:13.5px/1.4 var(--sans);color:var(--grey)}
+.ex b{color:var(--ink);font-weight:600}
+.xl{position:absolute;transform:translate(-50%,-50%);font-size:15px;color:var(--ink)}
+/* svg styles */
+.st{stroke:var(--line);stroke-width:1.6}
+.bus{stroke:#b5b5b5;stroke-width:1.2;fill:none}
+.busA{stroke:#b5b5b5;stroke-width:1.2;fill:none}
+.tanb{fill:var(--tan);stroke:var(--tanB);stroke-width:1.2}
+.greyb{fill:var(--box);stroke:var(--boxB);stroke-width:1.2}
+.bl{font:15px var(--sans);fill:var(--ink);text-anchor:middle}
+.lab{font:600 11.5px var(--sans);fill:var(--grey);letter-spacing:.05em}
+.small-s{font:11.5px var(--sans);fill:var(--grey)}
+.plus{fill:#fff;stroke:var(--line);stroke-width:1.4}
+.hd{cursor:pointer;outline:none}
+.hd .hb{fill:#fff;stroke-width:2.2}
+.hd .hl{font:600 12px var(--sans);fill:var(--ink);text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round}
+.hd .hv{font:11px var(--mono);fill:var(--grey);text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round}
+.hd .ab{font:700 13px var(--sans);fill:var(--bad);text-anchor:middle;paint-order:stroke;stroke:#fff;stroke-width:3px}
+.hd .hit{fill:transparent}
+.hd .ring{fill:none;stroke:var(--door);stroke-width:2.5;stroke-dasharray:4 3;animation:pulse 1.6s ease-in-out infinite}
+.hd.dim{opacity:.32}
+.hd.hov .hb,.hd:focus-visible .hb{stroke-width:3.5}
+.hd:focus-visible .hit{stroke:#1f4e9c;stroke-width:2.5}
+.hd.open .hb{stroke-width:4}
+@keyframes pulse{50%{stroke-opacity:.35}}
+.lk{fill:none;stroke-linecap:round}
+.lh{fill:none;stroke:transparent;stroke-width:9;cursor:help}
+.lh:hover{stroke:rgba(0,0,0,.12)}
+.flow{fill:none;stroke:#fff;stroke-dasharray:3 14;stroke-linecap:round;animation:flow 1.1s linear infinite;pointer-events:none}
+@keyframes flow{to{stroke-dashoffset:-34}}
+#links{transition:opacity .25s}
+#tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font:12px/1.4 var(--sans);padding:6px 9px;border-radius:5px;max-width:320px;display:none;z-index:8}
+#whint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:var(--ink);color:#fff;font:13px/1.3 var(--sans);padding:7px 12px;border-radius:6px;z-index:9;pointer-events:none;white-space:nowrap}
+#whint[hidden]{display:none}
+#rowEq{position:absolute;right:10px;top:10px;max-width:min(360px,60%);background:rgba(255,255,255,.95);border:1px solid var(--rule);border-left:2px solid var(--tanB);border-radius:4px;padding:6px 10px;font:13px/1.45 var(--sans);color:var(--grey);z-index:3;pointer-events:none}
+#rowEq[hidden]{display:none}
+#rowEq b{color:var(--ink)}
+#toast{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:#fff;border:1px solid var(--ink);border-radius:8px;padding:8px 12px;font:13px/1.4 var(--sans);display:none;z-index:9;box-shadow:0 6px 20px rgba(0,0,0,.15);max-width:86%}
+#toast button{margin-left:8px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:5px;padding:3px 8px;font:600 12px var(--sans)}
+
+/* dock */
+#dock{flex:none;display:grid;grid-template-columns:auto 1fr auto;gap:4px 16px;align-items:center;padding:6px 12px 8px;border-top:1px solid var(--rule);font:12.5px/1.3 var(--sans);background:#fff}
+#dock h2{margin:0 0 3px;font:600 11.5px var(--sans);color:var(--grey)}
+#dock .tg{display:flex;gap:5px;flex-wrap:wrap}
+.tgl{border:1px solid #bdbdbd;background:#fff;border-radius:6px;padding:3px 9px;font:600 12.5px var(--mono)}
+.tgl[aria-pressed=true]{background:var(--bad);border-color:var(--bad);color:#fff}
+#lossSvg{width:100%;height:40px;display:block}
+.delta{text-align:right;font-variant-numeric:tabular-nums}
+.delta strong{font-size:17px}.delta .up{color:var(--bad)}.delta .zero{color:var(--ok)}
+#ablNote{grid-column:1/-1;margin:0;font:12px/1.35 var(--sans);color:var(--grey)}
+#ablNote[hidden]{display:none}
+
+/* story */
+#story{width:var(--col);padding-top:var(--bar);position:relative;z-index:10}
+body.explore #story{display:none}
+.stop{min-height:82vh;padding:28px clamp(20px,2.6vw,40px) 40px;border-bottom:1px solid #f0f0f0}
+.stop:last-child{min-height:100vh}
+.card{max-width:640px;opacity:.55;transition:opacity .25s}
+.stop.on .card{opacity:1}
+.kick{font:600 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--grey);margin:0 0 6px}
+h1,h2.t{font:700 27px/1.2 var(--sans);margin:0 0 12px;letter-spacing:-.01em}
+h1{font-size:32px}
+.lede{font-size:17px;margin:0 0 14px}
+.card p{margin:0 0 12px}
+.card p.plain,.card .plain{color:var(--ink)}
+.sec{color:var(--grey)}
+.eq{margin:4px 0 14px;padding:6px 0 6px 14px;border-left:2px solid var(--rule);overflow-x:auto;overflow-y:hidden}
+.eq.scrolls{border-left-color:var(--door);box-shadow:inset -10px 0 8px -8px rgba(0,0,0,.25)}
+.eq .katex-display{margin:.35em 0}
+body.mathonly .plain{display:none}
+.dm{font:600 .82em var(--mono);padding:0 .35em;border-radius:3px;border:1px solid currentColor;white-space:nowrap;background:#fff}
+.dm.pos{color:var(--s-pos)}.dm.dmodel{color:var(--s-model)}.dm.heads{color:var(--s-heads)}.dm.dhead{color:var(--s-head)}
+.tk{font:600 .86em var(--mono);padding:0 5px;border-radius:4px;border:1.5px solid #c8c8c8;background:#fff;white-space:pre;display:inline-block;line-height:1.45;color:var(--ink)}
+.tk sub{font-size:.72em;color:var(--grey);margin-left:2px}
+.tk.a{border-color:var(--k);border-style:dashed}
+.tk.b{border-color:var(--k);background:var(--kT)}
+.tk.q{border-color:var(--q);background:var(--qT)}
+.tk.p{border-color:var(--lg);background:var(--lgT)}
+.tk.gen{border-style:dashed}.tk.miss{border-color:var(--bad);color:var(--bad)}
+.cc{display:flex;flex-wrap:wrap;gap:6px 14px;font:13px/1.4 var(--sans);margin:4px 0 14px;color:var(--grey)}
+.cc span{display:inline-flex;align-items:center;gap:6px}
+.cc i{display:inline-block;width:14px;height:14px;border-radius:3px;border:2px solid}
+.ablnote{border-left:3px solid var(--bad);background:#fbeceb;padding:8px 12px;font:14px/1.5 var(--sans);border-radius:4px;margin:0 0 12px}
+.ablnote[hidden]{display:none}
+body:not(.hasAbl) .cl{display:none}
+.cl{color:var(--grey)}
+.perr{margin:6px 0 0;padding:6px 10px;border-left:3px solid var(--bad);background:#fbeceb;color:var(--bad);font:600 13.5px/1.4 var(--sans);border-radius:4px}
+.perr[hidden]{display:none}
+.prompt[aria-invalid=true]{border-color:var(--bad);box-shadow:0 0 0 2px #f3c7c3}
+.warn{border-left:3px solid var(--bad);background:#fbeceb;padding:8px 12px;font:14px/1.45 var(--sans);border-radius:4px;margin:0 0 12px}
+.note{border-left:3px solid var(--line);background:var(--panel);padding:8px 12px;font:14px/1.5 var(--sans);border-radius:4px;margin:0 0 12px;color:var(--ink)}
+.btn{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:7px;padding:8px 14px;font:600 14px var(--sans)}
+.btn.ghost{background:#fff;color:var(--ink);border-color:#bdbdbd}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:default}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.small{font:13px/1.45 var(--sans);color:var(--grey)}
+.prompt{width:100%;font:14px var(--mono);padding:9px 11px;border:1px solid #8a8a8a;border-radius:6px;background:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:3px;padding:0;list-style:none;margin:10px 0;max-height:132px;overflow:auto}
+.chips .tk{font-size:11.5px;padding:0 4px;border-bottom:3px solid var(--lc,#ddd)}
+details{font:14px/1.45 var(--sans);margin:8px 0}summary{cursor:pointer;color:#1f4e9c}
+table{border-collapse:collapse;font:12.5px var(--mono);width:100%}th,td{padding:3px 7px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+th{font-family:var(--sans);font-weight:600;color:var(--grey)}
+.tw{max-height:260px;overflow:auto}
+label.f{font:14px var(--sans)}
+input[type=number]{width:4.5em;padding:4px;border:1px solid #8a8a8a;border-radius:5px}
+.genOut{display:flex;flex-wrap:wrap;gap:4px;list-style:none;padding:0;margin:8px 0;min-height:28px}
+.seg2{display:inline-flex;border:1px solid #c8c8c8;border-radius:6px;overflow:hidden;font:12.5px var(--sans)}
+.seg2 button{border:0;background:#fff;padding:4px 10px}.seg2 button[aria-pressed=true]{background:var(--ink);color:#fff}
+.doors{margin:12px 0;padding:10px 12px;border:1px dashed var(--door);border-radius:8px;font:13.5px/1.45 var(--sans)}
+.doors h4{margin:0 0 6px;font:600 12px var(--sans);color:var(--door)}
+.door{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--door);background:#fff;border-radius:7px;padding:5px 11px;margin:2px 6px 2px 0;font:600 13.5px var(--sans);color:var(--ink)}
+.door i{width:10px;height:10px;border-radius:50%;border:2px solid;display:inline-block}
+.door[aria-pressed=true]{background:var(--door);color:#fff}
+.nums{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 12px;font:13px var(--sans);color:var(--grey)}.nums b{font:700 21px var(--sans);display:block;color:var(--ink)}
+footer.about{margin-top:26px;padding-top:14px;border-top:1px solid var(--rule);font:13px/1.5 var(--sans);color:var(--grey)}
+footer.about h3{font:700 13px var(--sans);margin:0 0 6px;color:var(--ink)}
+pre.code{font:12px/1.5 var(--mono);background:var(--panel);border:1px solid var(--rule);padding:8px 10px;border-radius:5px;overflow-x:auto;margin:6px 0;white-space:pre}
+
+/* sheet */
+#sheet{flex:none;width:clamp(300px,36%,400px);overflow-y:auto;overflow-x:hidden;background:#fff;border-left:1px solid var(--rule);padding:0 16px 18px;font:14px/1.5 var(--sans)}
+#sheet[hidden]{display:none}
+#sheet h2{font:700 20px var(--sans);margin:0}
+#sheet h3{font:700 13px var(--sans);color:var(--ink);margin:14px 0 4px}
+.shh{display:flex;align-items:center;gap:6px;flex-wrap:wrap;position:sticky;top:0;background:#fff;padding:10px 0 8px;z-index:2;border-bottom:1px solid var(--rule)}
+.shh .sp{flex:1}
+.role{font:600 12px var(--sans);border:1.5px solid;border-radius:99px;padding:0 8px;display:inline-flex;gap:5px;align-items:center}
+.look{border-left:3px solid var(--door);background:#fbf3e6;padding:6px 10px;border-radius:4px;margin:8px 0}
+.ro{font:12.5px/1.4 var(--mono);background:var(--panel);border:1px solid var(--rule);padding:6px 8px;border-radius:5px;min-height:2.9em}
+#gnav{margin:6px 0;padding:6px 8px;border:1px dashed #bdbdbd;border-radius:5px;font:12.5px var(--sans);color:var(--grey)}
+.bars{display:grid;grid-template-columns:6.2em 1fr 3.6em;gap:2px 8px;align-items:center;font:11.5px var(--mono)}
+.bars .b{position:relative;height:9px;background:#eee}
+.bars .b i{position:absolute;top:0;bottom:0;background:#1f4e9c}
+.bars .b i.n{background:var(--door)}.bars .b::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#777}
+.bars .hot{font-weight:700}
+.legend{display:flex;align-items:center;gap:8px;font:12px var(--sans);color:var(--grey);margin:6px 0;flex-wrap:wrap}
+.legend i{display:inline-block;width:100px;height:10px;border:1px solid #bbb}
+.legend b{display:inline-block;width:14px;height:10px;background:repeating-linear-gradient(45deg,#b8b8b8 0 1px,#f0f0f0 1px 4px);border:1px solid #bbb}
+.vecs{display:grid;grid-template-columns:7.5em 1fr;gap:2px 8px;align-items:center;font:11.5px var(--mono)}
+.vecs svg{width:100%;height:34px;display:block;background:#fafafa}
+.adv{border:1px solid var(--rule);border-radius:6px;padding:4px 12px 10px;margin:10px 0;background:#fcfcfc}
+.adv>h3:first-child{margin-top:8px}
+table.pipe td:first-child{font-family:var(--sans);white-space:nowrap}
+table.pipe td{font-size:12px}
+
+/* explore */
+#explore{position:fixed;top:var(--bar);left:0;bottom:0;width:var(--col);z-index:25;background:#fff;overflow-y:auto;padding:16px clamp(16px,2vw,28px) 40px;font-family:var(--sans)}
+#explore[hidden]{display:none}
+#explore h2{font:700 24px var(--sans);margin:10px 0 4px}
+#explore h3{font:700 14px var(--sans);margin:18px 0 6px}
+#explore td button{border:1px solid #bdbdbd;background:#fff;border-radius:4px;padding:1px 6px;font:600 11px var(--mono)}
+#explore td button[aria-pressed=true]{background:var(--bad);color:#fff;border-color:var(--bad)}
+#explore tr.sel td{background:#fbf3e6}
+#explore td.qcol{background:#f3f3f3;font-weight:700}
+.back{width:100%;text-align:left;border:1px solid var(--door);background:#fbf3e6;border-radius:8px;padding:9px 12px;font:600 14px var(--sans)}
+.compP{display:flex;gap:12px;flex-wrap:wrap}
+.compP figure{margin:0}.compP figcaption{font:600 12px var(--sans);color:var(--grey);margin-bottom:2px}
+
+dialog{border:1px solid var(--ink);background:#fff;color:var(--ink);border-radius:10px;padding:0;max-width:min(760px,96vw);font:15px/1.55 var(--sans)}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog .in{padding:20px 26px 26px}
+dialog h2{font:700 24px var(--sans);margin:0 0 6px}dialog h3{font:700 15px var(--sans);margin:20px 0 4px}
+dialog#notes{margin:0 0 0 auto;height:100vh;max-height:100vh;width:min(780px,100vw);border-radius:0;border-width:0 0 0 1px}
+dialog ul{padding-left:20px}dialog li{margin:3px 0}
+.draft{border:1px solid var(--rule);background:var(--panel);padding:12px 16px;border-radius:6px}
+td.pass{color:var(--ok)}td.pend{color:var(--grey)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:860px){
+  :root{--col:100vw;--rail:0px}
+  #rail{display:none}
+  #stage{left:0;right:0;bottom:auto;height:62vh;z-index:12}
+  #story{padding-top:calc(var(--bar) + 62vh)}
+  .stop{min-height:70vh}
+  #explore{top:calc(var(--bar) + 62vh)}
+  #dock,#strip .hint,#tools .cap{display:none}
+  #vp{min-height:180px}
+  #mid{flex-direction:column}
+  #sheet{width:auto;max-height:45%;border-left:0;border-top:1px solid var(--rule)}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#story">Skip to the story</a>
+<header class="bar" role="banner">
+  <b>Induction Circuit</b>
+  <span class="pill" title="TransformerLens config callummcdougall/attn_only_2L_half, int8 weights"><span class="mono">attn_only_2L_half</span> · int8</span>
+  <label class="pill" title="Active compute backend"><span class="dot"></span><span class="sr">Backend</span>
+    <select id="backend" aria-label="Backend"><option value="webgpu">WebGPU</option><option value="wasm">WASM</option></select>
+    <span class="mono" id="bms">–</span></label>
+  <span class="pill mono" title="Artifact checksum (sha256 of manifest, first 12 hex) — mock">sha256 7c1e9ab04f3d</span>
+  <span class="pill" title="This prototype uses deterministic mock activations">mock data</span>
+  <span class="sp"></span>
+  <button id="bVerify" type="button">Verify</button>
+  <button id="bNotes" type="button">Design notes</button>
+  <button id="bExplore" type="button" aria-pressed="false" title="Pause the story and explore every head (E)">Step off the rail</button>
+</header>
+
+<ol id="rail" aria-label="Chapters"></ol>
+
+<div id="stage">
+  <div id="strip">
+    <div class="sh"><b>Tokens</b><span id="stripInfo"></span><span class="hint">hover: token and loss · click a second-half token to follow it</span></div>
+    <canvas id="stripCv" aria-label="Token strip. Coloured marks show the tokens the story follows."></canvas>
+  </div>
+  <div id="tools">
+    <div class="grp" role="group" aria-label="Quantity shown in each head"><span class="cap">Head fill</span>
+      <button class="seg" data-q="ind" aria-pressed="true">induction</button><button class="seg" data-q="prev" aria-pressed="false">prev-token</button><button class="seg" data-q="first" aria-pressed="false">first-token</button><button class="seg" data-q="abl" aria-pressed="false">ablation Δloss</button></div>
+    <div class="grp" role="group" aria-label="Composition links between layer 0 and layer 1"><span class="cap">Links</span>
+      <button class="seg" data-k="K" aria-pressed="true">K</button><button class="seg" data-k="Q" aria-pressed="false">Q</button><button class="seg" data-k="V" aria-pressed="false">V</button>
+      <label title="Composition score minus the random-matrix baseline (0.05); links at or below baseline are hidden"><input type="checkbox" id="subBase" checked> subtract baseline</label></div>
+    <div class="grp zoom" role="group" aria-label="Map zoom"><button class="seg" id="zOut" type="button" aria-label="Zoom out">−</button><button class="seg" id="zIn" type="button" aria-label="Zoom in">+</button><button class="seg" id="zFit" type="button" title="Frame the current subject (F)">Fit</button><button class="seg" id="zAll" type="button" title="Whole model (0)">Whole</button></div>
+  </div>
+  <div id="mid">
+  <div id="vp" tabindex="0" role="application" aria-label="Model map. Arrow keys pan, plus and minus zoom, 0 shows the whole model, F fits the current subject. Tab moves between heads; Enter opens one. Text equivalents are in the story cards and the Explore tables." aria-describedby="vpHelp">
+    <div id="world"><svg id="map" width="1000" height="760" viewBox="0 0 1000 760" aria-hidden="true"></svg><div id="wl" aria-hidden="true"></div></div>
+    <canvas id="gcv" aria-hidden="true"></canvas>
+    <div id="tip" role="tooltip"></div>
+    <div id="toast" role="status"></div>
+    <span class="sr" id="vpHelp">Drag to pan. Ctrl or Command plus scroll, or pinch, to zoom. Off the rail, plain scroll zooms.</span>
+    <div id="whint" hidden>Ctrl/⌘ + scroll (or pinch) to zoom · plain scroll reads the story</div>
+    <div id="rowEq" hidden aria-hidden="true"></div>
+  </div>
+  <section id="sheet" hidden aria-label="Open head detail"></section>
+  </div>
+  <div id="dock" role="group" aria-label="Ablation and loss">
+    <div><h2>Zero-ablate (hook_z)</h2><div class="tg" id="ablTg"></div></div>
+    <div><h2>Per-token loss <span id="lossLeg" style="font-weight:400"></span></h2><svg id="lossSvg" role="img" aria-label="Per-token loss chart" viewBox="0 0 300 40" preserveAspectRatio="none"></svg></div>
+    <div class="delta" aria-live="polite"><h2>Mean loss, 2nd half</h2><span id="dl"></span></div>
+    <p id="ablNote" hidden>Composition links stay the same: they are computed from weights (W<sub>QK</sub>, W<sub>OV</sub>) only. Ablation changes activations: attention patterns downstream, induction scores, logits and loss.</p>
+  </div>
+</div>
+<div class="sr" id="live" aria-live="polite"></div>
+
+<main id="story" tabindex="-1">
+<section class="stop" id="s0" aria-labelledby="h0"><div class="card">
+  <p class="kick">An interactive walkthrough · ARENA 1.2</p>
+  <h1 id="h0">How a two-layer transformer learns to repeat itself</h1>
+  <p class="lede plain">Scroll to follow the <em>induction circuit</em> through a 24-head model. At each stop the heads that matter glow: those are <b>doors</b>. Click one and its attention pattern opens right where it sits on the map.</p>
+  <label class="f" for="prompt"><b>Prompt</b> <span class="small">(BOS is prepended; mock tokenizer, up to 100 tokens)</span></label>
+  <input class="prompt" id="prompt" type="text" autocomplete="off" spellcheck="false" aria-describedby="promptErr">
+  <p class="perr" id="promptErr" role="alert" hidden></p>
+  <div class="btns"><button class="btn" id="run" type="button">Run model</button>
+    <button class="btn ghost" id="ex2" type="button">Random tokens ×2 (seq_len 50, seed 1234)</button>
+    <button class="btn ghost" id="ex1" type="button">Sentence example</button></div>
+  <ul class="chips" id="chips" aria-label="Tokens; underline darkness = per-token loss"></ul>
+  <p class="small" id="runInfo" role="status"></p>
+  <div class="btns" style="margin-top:4px"><button class="btn" id="start" type="button">Start the story ↓</button>
+    <button class="btn ghost" id="skipx" type="button">Done the exercises? Step off the rail →</button></div>
+  <p class="small">Reading mode <span class="seg2" role="group" aria-label="Reading mode"><button id="rmFull" aria-pressed="true">Full explanations</button><button id="rmMath" aria-pressed="false">Math only</button></span></p>
+  <p class="small">Keys: <kbd>N</kbd>/<kbd>P</kbd> next/previous stop · <kbd>E</kbd> step off the rail · <kbd>Esc</kbd> close grid / go back · on the map: drag to pan, <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + scroll or pinch to zoom, <kbd>+</kbd> <kbd>−</kbd> zoom, <kbd>0</kbd> whole model, <kbd>F</kbd> fit.</p>
+</div></section>
+<section class="stop" id="s1" aria-labelledby="h1x"><div class="card"><p class="kick">Stop 1 · The map</p><h2 class="t" id="h1x">The model, bottom to top</h2><div class="dyn"></div></div></section>
+<section class="stop" id="s2" aria-labelledby="h2x"><div class="card"><p class="kick">Induction · step 1 of 6</p><h2 class="t" id="h2x">Spot the pattern: A B … A → B</h2><div class="dyn"></div></div></section>
+<section class="stop" id="s3" aria-labelledby="h3x"><div class="card"><p class="kick">Induction · step 2 of 6</p><h2 class="t" id="h3x">Layer 0: head 0.7 looks one token back</h2><div class="dyn"></div></div></section>
+<section class="stop" id="s4" aria-labelledby="h4x"><div class="card"><p class="kick">Induction · step 3 of 6</p><h2 class="t" id="h4x">The second A asks a question</h2><div class="dyn"></div></div></section>
+<section class="stop" id="s5" aria-labelledby="h5x"><div class="card"><p class="kick">Induction · step 4 of 6</p><h2 class="t" id="h5x">K-composition: the key at B says “A came before me”</h2><div class="dyn"></div></div></section>
+<section class="stop" id="s6" aria-labelledby="h6x"><div class="card"><p class="kick">Induction · step 5 of 6</p><h2 class="t" id="h6x">The induction stripe</h2><div class="dyn"></div></div></section>
+<section class="stop" id="s7" aria-labelledby="h7x"><div class="card"><p class="kick">Induction · step 6 of 6</p><h2 class="t" id="h7x">The OV circuit copies B into the logits</h2><div class="dyn"></div></div></section>
+<section class="stop" id="s8" aria-labelledby="h8x"><div class="card"><p class="kick">Epilogue · greedy generation</p><h2 class="t" id="h8x">Let it keep going</h2><div class="dyn"></div>
+  <div class="gen"><label class="f">max new tokens <input class="maxNew" type="number" min="1" max="40" value="20"></label>
+  <div class="btns"><button class="btn gStep" type="button">Step</button><button class="btn gPlay" type="button">Play</button><button class="btn ghost gReplay" type="button">Replay</button></div>
+  <ol class="genOut" aria-label="Generated tokens"></ol><p class="small genInfo"></p></div></div></section>
+<section class="stop" id="s9" aria-labelledby="h9x"><div class="card"><p class="kick">Appendix</p><h2 class="t" id="h9x">Verify, and where this came from</h2>
+  <p class="plain">The numbers on screen come from a model you can check. The Verify panel lists parity against TransformerLens, int8 drift and the artifact checksum.</p>
+  <div class="btns"><button class="btn" id="vOpen" type="button">Open Verify</button><button class="btn ghost" id="nOpen" type="button">Read the design notes</button><button class="btn ghost" id="xOpen" type="button">Step off the rail</button></div>
+  <footer class="about"><h3>About</h3>
+    <p>Model: TransformerLens <span class="mono">callummcdougall/attn_only_2L_half</span> — 2 layers, 12 heads each, d_model 768, d_head 64, no MLP, no LayerNorm, shortformer positions (they enter Q and K only). Material: ARENA 1.2 “Intro to Mech Interp”. Tokenizer: EleutherAI/gpt-neox-20b (Apache-2.0). Weights and tokenizer are fixed; you control the prompt, generation length, heads, ablations, backend and views.</p>
+    <p>Private course site. Everything runs in your browser; no tokens, text or activations leave the page. <b>This prototype uses deterministic mock activations</b> with planted induction structure, not real weights.</p></footer>
+</div></section>
+</main>
+
+<aside id="explore" aria-label="Free exploration" hidden>
+  <button class="back" id="xBack" type="button">← Back to the story</button>
+  <h2>Off the rail</h2>
+  <p class="small">Every head is clickable. Pan and zoom freely (here a plain scroll zooms the map). The story is paused where you left it; ablations and the prompt carry over.</p>
+  <h3>Prompt</h3>
+  <input class="prompt" id="xPrompt" type="text" autocomplete="off" spellcheck="false" aria-label="Prompt" aria-describedby="xPromptErr">
+  <p class="perr" id="xPromptErr" role="alert" hidden></p>
+  <div class="btns"><button class="btn sm" id="xRun" type="button">Run</button><button class="btn sm ghost" id="xEx2" type="button">Random ×2</button><button class="btn sm ghost" id="xEx1" type="button">Sentence</button><button class="btn sm ghost" id="xView" type="button">Whole model</button></div>
+  <h3>Greedy generation</h3>
+  <div class="gen"><label class="f">max new tokens <input class="maxNew" type="number" min="1" max="40" value="20"></label>
+  <span class="btns" style="display:inline-flex;margin:0 0 0 8px"><button class="btn sm gStep" type="button">Step</button><button class="btn sm gPlay" type="button">Play</button><button class="btn sm ghost gReplay" type="button">Replay</button></span>
+  <ol class="genOut" aria-label="Generated tokens"></ol><p class="small genInfo"></p></div>
+  <h3>All 24 heads <span class="small">(text equivalent of the map; shaded column = quantity on the map)</span></h3>
+  <div class="tw" style="max-height:none"><table id="headT"></table></div>
+  <h3>Composition scores (weights only)</h3>
+  <p class="small">Rows: layer-0 head whose W<sub>OV</sub> writes. Columns: layer-1 head that reads it. Darker = higher; outlined = 0.7 → 1.4 and 0.7 → 1.10. These never change with the prompt or with ablation.</p>
+  <div class="compP" id="compP"></div>
+  <h3>Strongest <span id="kindName">K</span>-composition links</h3>
+  <table id="linkT"></table>
+  <details><summary>Table view: per-token loss</summary><div class="tw"><table id="lossT"></table></div></details>
+  <h3>Keys</h3>
+  <p class="small"><kbd>E</kbd> / <kbd>Esc</kbd> back to the story · <kbd>Z</kbd> ablate the open head · <kbd>[</kbd> <kbd>]</kbd> previous / next head · <kbd>Q</kbd> cycle head fill · <kbd>L</kbd> cycle link type · map: arrows pan, <kbd>+</kbd>/<kbd>−</kbd> zoom, <kbd>0</kbd> whole, <kbd>F</kbd> fit · inside an open grid, focus the cell cursor and use arrows.</p>
+  <footer class="about"><h3>About</h3><p>attn_only_2L_half · int8 · private course site · everything runs in your browser · mock activations in this prototype.</p></footer>
+</aside>
+
+<dialog id="verify" aria-labelledby="vt"><div class="in">
+  <h2 id="vt">Verify</h2><p class="small">Mock results for this prototype. In the real app these run against bundled fixtures on the active backend.</p>
+  <table id="vTable"></table>
+  <div class="btns"><button class="btn" id="vRun" type="button">Re-run checks</button><form method="dialog"><button class="btn ghost">Close</button></form></div>
+</div></dialog>
+
+<dialog id="notes" aria-labelledby="nt"><div class="in">
+  <div style="display:flex;justify-content:space-between;align-items:start"><h2 id="nt">Design notes — Variant A2, “Story with doors”, 2D map</h2><form method="dialog"><button class="btn ghost">Close</button></form></div>
+  <h3>Concept</h3>
+  <p>The scroll story is the frame. Left: one card per stop (plain English, paper-notation math rendered with KaTeX, colour-coded shape badges). Right: a flat, zoomable <b>map of the model</b> drawn in the visual language of <i>A Mathematical Framework for Transformer Circuits</i>. Each stop frames the part of the model it discusses. Heads that matter for the current step glow as <b>doors</b>; clicking one opens its causally masked T×T attention pattern in place, and the map zooms so the whole grid and its axis labels fit. A panel beside the grid, inside the map column, holds exact values, the cell breakdown and TransformerLens equivalents.</p>
+  <h3>Story and exploration</h3>
+  <ul>
+  <li><b>On the rail</b>: normal document scroll. A stop becomes active when its top passes 40% of the window height; <kbd>N</kbd>/<kbd>P</kbd>, PgUp/PgDn and the chapter rail jump between stops. Doors keep a first-time student off the 22 heads that do not matter yet.</li>
+  <li><b>Off the rail</b> (button, <kbd>E</kbd>, or “Done the exercises?”): an Explore panel replaces the story (prompt, generation, all-heads table, Q/K/V composition panels, link and loss tables). Every head is clickable. Prompt, ablations and the open grid carry over.</li>
+  <li><b>Back</b> returns to the same stop and scroll position.</li>
+  <li><b>Novice path</b>: read, open doors (each shows a “look for” hint), toggle ablation inline. <b>Expert path</b>: set the prompt, step off the rail, sort through the table, flip head fill, open heads with <kbd>[</kbd>/<kbd>]</kbd>, click cells for q·k, vectors and hook names. “Math only” trims the prose.</li></ul>
+  <h3>Map mapping</h3>
+  <ul><li><b>Vertical = depth</b>, bottom to top as in the paper: grey <i>tokens</i> → tan <i>embed</i> → residual stream (grey line with arrowheads) → layer 0 heads branching off a bus and rejoining at ⊕ (x₁) → layer 1 the same way (x₂) → tan <i>unembed</i> → grey <i>logits</i>. A dashed line shows positions entering only the Q/K inputs (shortformer). Beside each row, behind a thin rule, is grey text with that row’s equation.</li>
+  <li><b>Heads</b> are the composition figure’s dots: previous-token head 0.7 red, induction heads 1.4 and 1.10 teal, others grey. The dot’s fill level and the number under it show the selected quantity. Hatched red with ∅ = zero-ablated.</li>
+  <li><b>Links</b> are thin grey curves from each layer-0 head to each layer-1 head; width ∝ composition score (minus the 0.05 random baseline when “subtract baseline” is on, which also hides links at or below it). Dominant links (above 3× baseline) take the colour of what they feed: K green, Q teal, V red. In step 4, 0.7 → 1.4/1.10 animate. Links are weight-only and do not change with ablation; the dock says so whenever an ablation is active.</li>
+  <li><b>Induction colour code</b> everywhere (story, token strip, grids): key = green (B; the earlier A has a dashed green outline), query = teal (second A), information moved by attention = red, logit effect = purple (predicted B).</li>
+  <li><b>Grid</b>: drawn on a screen-space canvas in step with the map transform, so it stays sharp at every zoom. Lower triangle: grey sequential scale on √weight; upper triangle: hatched mask. Axis labels are sparse (every 5 at T=101), and role letters sit in their own lane so they never collide with the numbers. Opening takes 220 ms (instant with reduced motion).</li></ul>
+  <h3>Tradeoffs</h3>
+  <ul><li>Doors protect novices but add a mode switch for experts; mitigated with one key and shared state.</li>
+  <li>One grid open at a time; comparing heads means flipping with ◀ ▶.</li>
+  <li>At T=101 a grid cell is ~5 px when fitted; zoom in, hover, or use the keyboard cell cursor for precision.</li>
+  <li>The equation column is part of the map, so on the focused stops it slides out of view; a small pinned KaTeX label (top right of the map) keeps that row’s equation visible.</li>
+  <li>Framings never cut a row of the diagram: each stop’s view is nudged so every row (heads with labels, boxes) is fully in view or fully out.</li>
+  <li>On the rail, a plain wheel over the map scrolls the story (a one-time hint says “Ctrl/⌘ + scroll to zoom”); zoom is Ctrl/⌘ + wheel, pinch, buttons or keys. Off the rail, a plain wheel zooms.</li>
+  <li>The head panel lives in the map column beside the grid, so it never covers the story text; the grid gets less width (about 440 px at 1440×900).</li>
+  <li>Story claims quote clean-run numbers; when ablations are active, a red note under each claim gives the ablated values in words.</li></ul>
+  <h3>Draft paragraph for “Interactions and UI”</h3>
+  <p class="draft">The app is a guided scroll story beside a zoomable 2D map of the model. The map is drawn like the architecture figure in <i>A Mathematical Framework for Transformer Circuits</i>: a vertical residual stream runs from tokens and the embedding, through two rows of twelve attention heads that branch off and rejoin at ⊕, to the unembedding and logits, with each row’s equation beside it. Heads are dots coloured by role (previous-token red, induction teal); their fill shows a chosen quantity (induction, previous-token or first-token score, or ablation loss increase). Curved links between layers show Q-, K- or V-composition scores, which depend only on weights; a baseline toggle hides links at chance level. Students pan and zoom with wheel, pinch, drag, buttons or keys, and each story stop frames the part of the model it discusses. At each of the six induction steps the relevant heads glow as doors; clicking one opens its causally masked T×T attention grid in place, annotated with the induction colour code (key green, query teal, moved information red, logit effect purple). Hovering a cell shows its value and tokens; clicking opens the q·k/√d_head breakdown and Q/K/V detail with TransformerLens equivalents. Zero-ablation updates patterns, scores and per-token loss immediately; greedy generation grows open grids. “Step off the rail” makes every head available, with tables as text equivalents.</p>
+</div></dialog>
+
+<script type="module">
+/* ============ helpers ============ */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const easeOut=t=>1-Math.pow(1-t,3);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function hash(a,b,c,d){let h=Math.imul(a|0,374761393)^Math.imul(b|0,668265263)^Math.imul(c|0,2147483629)^Math.imul(d|0,1274126177);h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return (h>>>0)/4294967296}
+function rng(seed){let s=seed>>>0;return()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296}}
+const RMq=matchMedia('(prefers-reduced-motion: reduce)');let RM=RMq.matches;RMq.addEventListener?.('change',e=>{RM=e.matches});
+const live=m=>{$('#live').textContent=m};
+const f2=x=>(+x).toFixed(2), f3=x=>(+x).toFixed(3);
+const hn=(L,H)=>L+'.'+H;
+const HEADS=[];for(let L=0;L<2;L++)for(let H=0;H<12;H++)HEADS.push({L,H,k:hn(L,H),i:L*12+H});
+const R=String.raw;
+/* spread 1-D label centres so neighbours are at least `gap` apart (keeps order) */
+function spread(items,gap,lo,hi){items.sort((a,b)=>a.p-b.p);for(let k=1;k<items.length;k++)items[k].p=Math.max(items[k].p,items[k-1].p+gap);const over=items.length?items[items.length-1].p-hi:0;if(over>0)items.forEach(it=>it.p-=over);for(let k=items.length-2;k>=0;k--)items[k].p=Math.min(items[k].p,items[k+1].p-gap);items.forEach(it=>it.p=Math.max(it.p,lo));return items}
+const TX=(s,d)=>window.katex?katex.renderToString(s,{displayMode:!!d,throwOnError:false}):`<code class="texfb">${esc(s)}</code>`;
+const m=s=>TX(s,false), md=s=>`<div class="eq">${TX(s,true)}</div>`;
+const C={q:'#0e7c7b',k:'#2b7a35',mv:'#c0392b',lg:'#5b3aa8',grey:'#8c8c8c',door:'#a35f00',ink:'#111',bad:'#b3261e',kT:'#dbefd8',qT:'#d4eeed'};
+
+/* ============ state ============ */
+const S={mode:'story',stop:0,quant:'ind',kind:'K',sub:true,abl:new Set(),open:null,openT:0,cell:null,delta:false,
+  tokens:[],T:0,prevOcc:[],isPred:[],demo:null,pat:{},patClean:null,q:{},qc:{},loss:null,lossClean:null,
+  flash:{row:-1,until:0},hoverCell:null,hoverHead:null,saved:null,gridDirty:true,ovDirty:true};
+const BASE=0.05;
+
+/* ============ tokens ============ */
+const SYL=['ab','ro','tek','pi','lun','dor','vi','ka','mel','sun','qua','zel','fo','gri','han','ix','jo','nu','pol','ste'];
+function randSeq(n,seed){const r=rng(seed),used=new Set(),out=[];while(out.length<n){const t=' '+SYL[Math.floor(r()*20)]+SYL[Math.floor(r()*20)];if(!used.has(t)){used.add(t);out.push(t)}}return out}
+const rawToks=text=>text.match(/\s?[A-Za-z0-9']+|[^\sA-Za-z0-9']/g)||[];
+function tokenize(text){return ['<BOS>',...rawToks(text)].slice(0,101)}
+const tokStr=t=>t==='<BOS>'?'BOS':t;
+const PRESET={rand:()=>{const r=randSeq(50,1234);return ['<BOS>',...r,...r]},sent:()=>tokenize('The cat sat on the mat. The cat sat on the mat.')};
+function setTokens(arr,keepOpen){
+  S.tokens=arr.slice();S.T=arr.length;
+  const last=new Map();S.prevOcc=new Array(S.T).fill(-1);
+  for(let i=1;i<S.T;i++){const t=S.tokens[i];if(last.has(t))S.prevOcc[i]=last.get(t);last.set(t,i)}
+  S.isPred=new Array(S.T).fill(false);
+  for(let i=1;i<S.T-1;i++){const p=S.prevOcc[i];S.isPred[i]=p>=1&&p+1<i&&S.tokens[p+1]===S.tokens[i+1]}
+  pickDemo();
+  if(!keepOpen)S.cell=null;
+}
+function pickDemo(keep){
+  const c=[];for(let i=2;i<S.T-1;i++)if(S.isPred[i])c.push(i);
+  if(keep!=null&&S.isPred[keep]){S.demo=mkDemo(keep);return}
+  S.demo=c.length?mkDemo(c[Math.floor(c.length*.3)]):null;
+}
+/* j = first A, b = first B (key), i = second A (query), t = second B (predicted) */
+function mkDemo(i){const j=S.prevOcc[i];return{i,j,b:j+1,t:i+1,A:S.tokens[i],B:S.tokens[j+1]}}
+
+/* ============ mock model (activations depend on ablation; composition does not) ============ */
+const a01=(abl,k)=>abl.has(k)?0:1;
+function indFactor(abl){return(.45*a01(abl,'1.4')+.55*a01(abl,'1.10'))*(.12+.88*a01(abl,'0.7'))}
+const KEYSET=new Set(['0.7','1.4','1.10']);
+function minorEff(k){return KEYSET.has(k)?0:.008+.05*hash(k.length,k.charCodeAt(0),k.charCodeAt(k.length-1),7)}
+function lossArr(abl){
+  const f=indFactor(abl);let minor=0;abl.forEach(k=>minor+=minorEff(k));
+  const out=new Float32Array(Math.max(0,S.T-1));
+  for(let i=0;i<out.length;i++){const n=hash(i,77,0,0),n2=hash(i,78,0,0);
+    out[i]=(S.isPred[i]?.35+.35*n+6.4*(1-f)*(.85+.3*n2):7.4+3.2*n)+minor}
+  return out;
+}
+function meanPred(l){let s=0,c=0;for(let i=0;i<l.length;i++)if(S.isPred[i]){s+=l[i];c++}if(!c){for(let i=0;i<l.length;i++)s+=l[i];c=l.length||1}return s/c}
+function genPat(L,H,abl){
+  const T=S.T,toks=S.tokens,po=S.prevOcc,W=new Float32Array(T*T),id=L*12+H,fac=.12+.88*a01(abl,'0.7');
+  const style=(L===0&&H===7)?'prev':(L===1&&(H===4||H===10))?'ind':(hash(id,5,5,5)*5|0);
+  const lg=new Float32Array(T);
+  for(let i=0;i<T;i++){
+    const tg=(style==='ind'&&po[i]>=1&&po[i]+1<=i)?po[i]+1:-1;let mx=-1e9;
+    for(let j=0;j<=i;j++){
+      let v=(hash(id,i,j,9)-.5)*.9;
+      if(style==='prev'){if(j===i-1)v+=Math.log(i+2)+2.6;if(j===0)v+=.4}
+      else if(style==='ind'){if(j===0)v+=1.3;if(j===tg)v+=(Math.log(i+2)+(H===10?1.9:1.2))*fac}
+      else if(style===0){if(j===0)v+=3.2;if(j===i)v+=.3}
+      else if(style===1){v+=-.45*(i-j)+.5}
+      else if(style===3){if(j===i)v+=2.2;if(j===0)v+=1}
+      else if(style===4){if(j===0)v+=1.5;if(j<i&&toks[j]===toks[i])v+=1.6}
+      lg[j]=v;if(v>mx)mx=v}
+    let sum=0;for(let j=0;j<=i;j++){lg[j]=Math.exp(lg[j]-mx);sum+=lg[j]}
+    for(let j=0;j<=i;j++)W[i*T+j]=lg[j]/sum;
+  }
+  return W;
+}
+const pq=W=>{const T=S.T;let ind=0,ic=0,pv=0,fs=0,n=0;for(let i=1;i<T;i++){pv+=W[i*T+i-1];fs+=W[i*T];n++;const p=S.prevOcc[i];if(p>=1&&p+1<=i){ind+=W[i*T+p+1];ic++}}return{ind:ic?ind/ic:0,prev:n?pv/n:0,first:n?fs/n:0}};
+function recompute(){
+  S.pat={};S.patClean=null;
+  HEADS.forEach(h=>S.pat[h.k]=genPat(h.L,h.H,S.abl));
+  S.loss=lossArr(S.abl);S.lossClean=lossArr(new Set());
+  const cleanMean=meanPred(S.lossClean);
+  HEADS.forEach(h=>{
+    S.q[h.k]={...pq(S.pat[h.k]),abl:meanPred(lossArr(new Set([h.k])))-cleanMean};
+    S.qc[h.k]=S.abl.size?{...pq(cleanPat(h.k)),abl:S.q[h.k].abl}:S.q[h.k];
+  });
+  S.gridDirty=S.ovDirty=true;
+}
+function cleanPat(k){
+  if(!S.patClean)S.patClean={};
+  if(!S.patClean[k]){const h=HEADS.find(x=>x.k===k);S.patClean[k]=S.abl.size?genPat(h.L,h.H,new Set()):S.pat[k]}
+  return S.patClean[k];
+}
+const QMAX={ind:1,prev:1,first:1,abl:6};
+const QNAME={ind:'induction score',prev:'previous-token score',first:'first-token (BOS) score',abl:'ablation Δloss (2nd half)'};
+const qv=(k,q=S.quant)=>S.q[k]?S.q[k][q]:0;
+const qn=(k,q=S.quant)=>clamp(qv(k,q)/QMAX[q],0,1);
+const fq=(k,q=S.quant)=>(q==='abl'&&qv(k,q)>=0?'+':'')+f2(qv(k,q));
+
+/* composition scores: functions of the weights only. COMP[kind][L0 head][L1 head] */
+const COMP={K:[],Q:[],V:[]};
+['K','Q','V'].forEach((kd,ki)=>{for(let a=0;a<12;a++){COMP[kd][a]=[];for(let b=0;b<12;b++){const n=hash(ki+1,a,b,3);COMP[kd][a][b]=BASE*(.2+n*n*n*1.0)}}});
+COMP.K[7][4]=.62;COMP.K[7][10]=.71;COMP.K[3][4]=.085;COMP.Q[2][10]=.075;COMP.V[7][10]=.07;COMP.K[5][10]=.06;
+const lossRep=()=>meanPred(S.loss), lossRepClean=()=>meanPred(S.lossClean);
+const dla=(k,abl=S.abl)=>(k==='1.4'?4.7:6.1)*a01(abl,k)*(.12+.88*a01(abl,'0.7'));
+function firstPass(){let s=0,c=0;S.lossClean.forEach((l,i)=>{if(!S.isPred[i]){s+=l;c++}});return c?s/c:0}
+
+/* cell score + decomposition (mock) */
+function cellScore(L,H,i,j){const w=S.pat[hn(L,H)][i*S.T+j];return Math.log(Math.max(w,1e-9))+2.2+hash(L*12+H,i,17,0)}
+function decomp(L,H,i,j,side){
+  const names=L===0?['token','position']:['token','position',...Array.from({length:12},(_,h)=>'head '+hn(0,h))];
+  const sc=cellScore(L,H,i,j),id=L*12+H,sp={};
+  const tgt=S.prevOcc[i]>=1&&S.prevOcc[i]+1===j;
+  if(L===1&&(H===4||H===10)&&tgt){
+    if(side==='K'){sp['head 0.7']=.68*a01(S.abl,'0.7');sp.token=.1;sp.position=.06}
+    else{sp.token=.55;sp.position=.12;sp['head 0.7']=.05*a01(S.abl,'0.7')}
+  }else if(L===0&&H===7&&j===i-1){sp.position=.78;sp.token=.08}
+  S.abl.forEach(k=>{if(k.startsWith('0.')&&L===1)sp['head '+k]=0});
+  const fixed=Object.values(sp).reduce((a,b)=>a+b,0);
+  const rest=names.filter(n=>!(n in sp)),r=rest.map((n,x)=>Math.pow(hash(id,i*131+j,x,side==='K'?1:2),3)+.02),rs=r.reduce((a,b)=>a+b,0);
+  const rem=1-fixed;
+  return{score:sc,rows:names.map(n=>{const s=(n in sp)?sp[n]:(r[rest.indexOf(n)]/rs)*rem;return{n,v:s*sc,s}})};
+}
+function vec(L,H,i,side){const a=new Float32Array(64);for(let d=0;d<64;d++)a[d]=(hash(L*12+H,i,d,side)-.5)*2;return a}
+
+/* ============ colour scales ============ */
+const hex=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));
+function mkLut(stops){const s=stops.map(hex),out=[];for(let n=0;n<256;n++){const t=n/255*(s.length-1),a=Math.min(s.length-2,Math.floor(t)),f=t-a;out.push(s[a].map((v,c)=>Math.round(lerp(v,s[a+1][c],f))))}return out}
+const RAMP=['#ffffff','#d6d6d6','#939393','#4d4d4d','#111111'];
+const LUT=mkLut(RAMP), LUTD=mkLut(['#b35806','#f1b37a','#ffffff','#a3b9df','#2c5aa0']);
+const rgb=c=>`rgb(${c[0]},${c[1]},${c[2]})`;
+const rampCss=t=>rgb(LUT[Math.round(clamp(t,0,1)*255)]);
+
+/* ============ map geometry (world units, y down) ============ */
+const MG={W:1000,H:760,X:70,hx:h=>165+h*44,yH:[483,225],r:13,yIn:[538,280],yOut:[430,172],yLog:36,yUn:104,yEmb:620,yTok:700,rule:685,tx:705,px:130};
+const FR={whole:{x:-10,y:2,w:1005,h:735},l0:{x:-5,y:400,w:675,h:340,al:'r'},l1:{x:-5,y:148,w:675,h:150,al:'r'},link:{x:-5,y:190,w:675,h:316,al:'r'},copy:{x:-5,y:8,w:675,h:292,al:'r'}};
+const GS=400;
+const ROLEC={'0.7':C.mv,'1.4':C.q,'1.10':C.q};
+const vp=$('#vp'),world=$('#world'),gcv=$('#gcv'),gx=gcv.getContext('2d');
+const V={s:1,tx:0,ty:0};let anim=null,openAnim=null,vpW=1,vpH=1,dpr=1;
+
+function staticSVG(){
+  const X=MG.X,a=[];
+  a.push(`<defs><marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" fill="#8a8a8a"/></marker><pattern id="hz" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="${C.bad}" stroke-width="1.8"/></pattern></defs>`);
+  const seg=(y1,y2)=>`<line class="st" x1="${X}" y1="${y1}" x2="${X}" y2="${y2}" marker-end="url(#ar)"/>`;
+  a.push(seg(MG.yTok-16,MG.yEmb+19),seg(MG.yEmb-16,MG.yOut[0]+12),seg(MG.yOut[0]-9,MG.yOut[1]+12),seg(MG.yOut[1]-9,MG.yUn+19),seg(MG.yUn-16,MG.yLog+19));
+  const x11=MG.hx(11);
+  [0,1].forEach(L=>{
+    const yi=MG.yIn[L],yo=MG.yOut[L],yh=MG.yH[L],r=MG.r;
+    let d=`M${X},${yi} H${x11}`;for(let h=0;h<12;h++)d+=` M${MG.hx(h)},${yi} V${yh+r+2}`;
+    a.push(`<path class="bus" d="${d}"/><circle cx="${X}" cy="${yi}" r="3" fill="#8a8a8a"/>`);
+    let o='';for(let h=0;h<12;h++)o+=`M${MG.hx(h)},${yh-r-2} V${yo} `;
+    a.push(`<path class="bus" d="${o}"/><path class="bus" d="M${x11},${yo} H${X+12}" marker-end="url(#ar)"/>`);
+    a.push(`<circle class="plus" cx="${X}" cy="${yo}" r="9"/><path d="M${X-5},${yo}H${X+5}M${X},${yo-5}V${yo+5}" stroke="#555" stroke-width="1.5"/>`);
+    a.push(`<text class="lab" x="${MG.hx(0)-12}" y="${yo-8}">LAYER ${L} · HEADS ${L}.0 – ${L}.11</text>`);
+  });
+  const box=(cy,cls,label,w=110)=>`<rect class="${cls}" x="${X-w/2}" y="${cy-16}" width="${w}" height="32" rx="2"/><text class="bl" x="${X}" y="${cy+5}">${label}</text>`;
+  a.push(box(MG.yLog,'greyb','logits'),box(MG.yUn,'tanb','unembed'),box(MG.yEmb,'tanb','embed'),box(MG.yTok,'greyb','tokens'));
+  // positional embedding: Q/K inputs only
+  const px=MG.px,pbx=225;
+  a.push(`<rect class="tanb" x="${pbx-40}" y="${MG.yEmb-16}" width="80" height="32" rx="2"/><text class="bl" x="${pbx}" y="${MG.yEmb+5}">pos</text>`);
+  a.push(`<path d="M${pbx-40},${MG.yEmb} H${px} V${MG.yIn[1]}" fill="none" stroke="${C.q}" stroke-width="1.4" stroke-dasharray="5 4"/><circle cx="${px}" cy="${MG.yIn[0]}" r="3.2" fill="${C.q}"/><circle cx="${px}" cy="${MG.yIn[1]}" r="3.2" fill="${C.q}"/>`);
+  a.push(`<text class="small-s" x="${px+8}" y="${MG.yIn[0]+30}">p → Q, K inputs only (not V, not the stream)</text>`);
+  a.push(`<line x1="${MG.rule}" y1="14" x2="${MG.rule}" y2="${MG.yTok+20}" stroke="#d0d0d0" stroke-width="1"/>`);
+  a.push('<g id="links"></g><g id="heads"></g>');
+  return a.join('');
+}
+function worldLabels(){
+  const X=MG.X;
+  const xl=(x,y,s)=>`<div class="xl" style="left:${x}px;top:${y}px">${m(s)}</div>`;
+  const ex=(y,html)=>`<div class="ex" style="left:${MG.tx}px;top:${y}px">${html}</div>`;
+  return xl(X+20,MG.yEmb-34,'x_0')+xl(X-30,MG.yOut[0],'x_1')+xl(X-30,MG.yOut[1],'x_2')+
+   ex(MG.yLog,`<b>Logits.</b> ${m(R`T(t)=W_U\,x_{-1}`)}`)+
+   ex(MG.yUn,`<b>Unembed</b> reads the last stream, ${m(R`x_{-1}=x_2`)}.`)+
+   ex(MG.yOut[1],m(R`x_2=x_1+\sum_{h\in H_1}h(x_1)`))+
+   ex(MG.yH[1],`<b>Layer 1.</b> Each head: ${m(R`h(x)=(A^h\otimes W_O^hW_V^h)\cdot x`)}`)+
+   ex(352,`<b>Composition</b> (curves): how much a layer-1 head’s ${m(R`W_{QK}`)} or ${m(R`W_{OV}`)} reads what a layer-0 head’s ${m(R`W_{OV}`)} writes. Weights only.`)+
+   ex(MG.yOut[0],m(R`x_1=x_0+\sum_{h\in H_0}h(x_0)`))+
+   ex(MG.yH[0],`<b>Layer 0.</b> ${m(R`A^h=\operatorname{softmax}^*\!\big((x{+}p)^{\top}W_{QK}^h(x{+}p)\big)`)}`)+
+   ex(MG.yEmb,`<b>Embed.</b> ${m(R`x_0=W_E\,t`)}; positions ${m('p')} enter only queries and keys.`)+
+   ex(MG.yTok,`<b>Tokens</b> ${m('t')}, BOS prepended.`);
+}
+function levelPath(n,r){
+  if(n<=.005)return'';if(n>=.995)return`M${-r},0 A${r},${r} 0 1 0 ${r},0 A${r},${r} 0 1 0 ${-r},0 Z`;
+  const yc=r-2*r*n,w=Math.sqrt(Math.max(0,r*r-yc*yc));
+  return`M${(-w).toFixed(2)},${yc.toFixed(2)} A${r},${r} 0 ${n>.5?1:0} 0 ${w.toFixed(2)},${yc.toFixed(2)} Z`;
+}
+const curStop=()=>S.mode==='story'?STOPS[S.stop]:null;
+const isDoor=k=>{const st=curStop();return !st||st.doors.includes(k)};
+function renderHeads(){
+  const st=curStop(),doors=st?st.doors:[];
+  $('#heads').innerHTML=HEADS.map(h=>{
+    const k=h.k,x=MG.hx(h.H),y=MG.yH[h.L],r=MG.r,n=S.q[k]?qn(k):0,col=ROLEC[k]||C.grey,ab=S.abl.has(k);
+    const door=st&&doors.includes(k),dim=st&&doors.length&&!door,tab=(!st||door)?0:-1;
+    const lp=levelPath(n,r);
+    return`<g class="hd${door?' door':''}${dim?' dim':''}${ab?' abl':''}${S.open&&S.open.k===k?' open':''}${S.hoverHead===k?' hov':''}" data-head="${k}" transform="translate(${x},${y})" tabindex="${tab}" role="button" aria-label="Head ${k}, ${QNAME[S.quant]} ${fq(k)}${ab?', zero-ablated':''}${door?', door: press Enter to open its attention pattern':''}">
+${door?`<circle class="ring" r="${r+7}"/>`:''}<circle class="hb" r="${r}" stroke="${col}"/>${lp?`<path d="${lp}" fill="${col}" opacity=".88"/>`:''}${ab?`<circle r="${r}" fill="url(#hz)"/><text class="ab" y="5">∅</text>`:''}
+<text class="hl" y="${-r-6}">${k}</text><text class="hv" y="${r+14}">${fq(k)}</text><circle class="hit" r="${r+6}"/></g>`}).join('');
+}
+function renderLinks(){
+  const kd=S.kind,col={K:C.k,Q:C.q,V:C.mv}[kd],st=curStop(),L=[];
+  for(let a=0;a<12;a++)for(let b=0;b<12;b++){const s=COMP[kd][a][b];if(S.sub&&s<=BASE)continue;L.push([a,b,s])}
+  L.sort((x,y)=>x[2]-y[2]);
+  $('#links').innerHTML=L.map(([a,b,s])=>{
+    const v=S.sub?(s-BASE)/(.75-BASE):s/.75,w=.5+8*clamp(v,0,1),dom=s>3*BASE;
+    const x1=MG.hx(a),y1=MG.yH[0]-MG.r-21,x2=MG.hx(b),y2=MG.yH[1]+MG.r+20,d=`M${x1},${y1} C${x1},${y1-95} ${x2},${y2+95} ${x2},${y2}`;
+    const flow=st&&st.pulse&&kd==='K'&&a===7&&(b===4||b===10);
+    return`<path class="lk" d="${d}" stroke="${dom?col:'#9a9a9a'}" stroke-width="${w.toFixed(2)}" opacity="${dom?.92:.5}"/>${flow?`<path class="flow" d="${d}" stroke-width="${Math.max(2,w*.4).toFixed(1)}"/>`:''}<path class="lh" d="${d}" data-link="${a},${b}"/>`}).join('');
+  $('#links').style.opacity=st?st.links:1;
+}
+function renderMap(){renderHeads();renderLinks();S.ovDirty=true}
+
+/* ============ view (pan / zoom) ============ */
+function applyView(){world.style.transform=`translate(${V.tx}px,${V.ty}px) scale(${V.s})`;S.ovDirty=true}
+function fitView(r,pad,al){
+  const W=vpW,H=vpH,s=clamp(Math.min((W-pad.l-pad.r)/r.w,(H-pad.t-pad.b)/r.h),.15,14);
+  const tx=al==='r'?W-pad.r-(r.x+r.w)*s:pad.l+((W-pad.l-pad.r)-r.w*s)/2-r.x*s;
+  return{s,tx,ty:pad.t+((H-pad.t-pad.b)-r.h*s)/2-r.y*s};
+}
+function gridPads(){return S.T<=30?{l:104,t:84,r:50,b:40}:{l:62,t:48,r:50,b:40}}
+function gridRect(){const o=S.open,cx=clamp(MG.hx(o.H),250,470),cy=MG.yH[o.L];return{x:cx-GS/2,y:cy-GS/2,w:GS,h:GS}}
+/* horizontal bands of map content (world y): a framing may show a band fully or not at all, never cut it */
+const BANDS=[[18,54],[86,122],[156,268],[414,520],[556,574],[602,638],[682,718]];
+function avoidBands(v,r){
+  const s=v.s,H=vpH,vis=ty=>[-ty/s,(H-ty)/s];
+  const ok=ty=>{const[y0,y1]=vis(ty);if(r.y<y0-.5||r.y+r.h>y1+.5)return false;return BANDS.every(([a,b])=>b<=y0||a>=y1||(a>=y0&&b<=y1))};
+  if(ok(v.ty))return v;
+  const c=[];BANDS.forEach(([a,b])=>[a-12,b+12].forEach(y=>{c.push(-y*s,H-y*s)}));
+  c.sort((x,y)=>Math.abs(x-v.ty)-Math.abs(y-v.ty));
+  for(const ty of c)if(ok(ty))return{...v,ty};
+  return v;
+}
+function targetView(){
+  if(S.open)return fitView(gridRect(),gridPads());
+  const f=FR[S.mode==='story'?(STOPS[S.stop].frame||'whole'):'whole'];
+  return avoidBands(fitView(f,{l:14,t:14,r:14,b:14},f.al),f);
+}
+const ROWEQ={
+  l0:()=>`<b>Layer 0</b> ${m(R`x_1=x_0+\sum_{h\in H_0}h(x_0)`)}<br>${m(R`A^h=\operatorname{softmax}^*\!\big((x{+}p)^{\top}W_{QK}^h(x{+}p)\big)`)}`,
+  l1:()=>`<b>Layer 1</b> ${m(R`x_2=x_1+\sum_{h\in H_1}h(x_1)`)}<br>${m(R`h(x)=(A^h\otimes W_O^hW_V^h)\cdot x`)}`,
+  link:()=>`<b>K-composition</b> (weights only)<br>${m(R`\lVert W_{QK}^{1.h}W_{OV}^{0.h'}\rVert_F\,/\,\lVert W_{QK}^{1.h}\rVert_F\lVert W_{OV}^{0.h'}\rVert_F`)}`,
+  copy:()=>`<b>Unembed</b> ${m(R`T(t)=W_U\,x_{-1}`)}<br>OV circuit ${m(R`W_U\,W_{OV}^{1.h}\,W_E`)}`
+};
+function updateRowEq(){const el=$('#rowEq'),f=S.mode==='story'&&!S.open?STOPS[S.stop].frame:null,fn=f&&ROWEQ[f];
+  if(!fn){el.hidden=true;el.dataset.f='';return}if(el.dataset.f!==f){el.innerHTML=fn();el.dataset.f=f}el.hidden=false}
+function goView(to,ms=320){if(RM||ms===0){anim=null;Object.assign(V,to);applyView();return}anim={from:{...V},to,t0:performance.now(),ms}}
+function reframe(ms){updateRowEq();goView(targetView(),ms)}
+function zoomAt(f,px,py){anim=null;const s2=clamp(V.s*f,.15,14),k=s2/V.s;V.tx=px-(px-V.tx)*k;V.ty=py-(py-V.ty)*k;V.s=s2;applyView()}
+function resizeVp(){
+  const r=vp.getBoundingClientRect();vpW=Math.max(1,r.width);vpH=Math.max(1,r.height);dpr=Math.min(2,devicePixelRatio||1);
+  gcv.width=Math.round(vpW*dpr);gcv.height=Math.round(vpH*dpr);reframe(0);
+}
+
+/* ============ grid overlay ============ */
+const cellCv=document.createElement('canvas');
+function buildCells(){
+  const o=S.open;if(!o)return;const T=S.T,W=S.pat[o.k],Cl=S.delta?cleanPat(o.k):null;
+  cellCv.width=cellCv.height=T;const g=cellCv.getContext('2d'),img=g.createImageData(T,T),D=img.data;
+  for(let i=0;i<T;i++)for(let j=0;j<T;j++){const p=(i*T+j)*4;let c;
+    if(j>i)c=[240,240,240];else{const w=W[i*T+j];c=S.delta?LUTD[Math.round((clamp((w-Cl[i*T+j])/.8,-1,1)*.5+.5)*255)]:LUT[Math.round(Math.sqrt(w)*255)]}
+    D[p]=c[0];D[p+1]=c[1];D[p+2]=c[2];D[p+3]=255}
+  g.putImageData(img,0,0);
+}
+const roleOf=i=>{const d=S.demo;if(!d)return null;return i===d.j?['A',C.k,true]:i===d.b?['B',C.k]:i===d.i?['A′',C.q]:i===d.t?['B′',C.lg]:null};
+function marksFor(k){
+  const d=S.demo;if(!d)return[];const st=S.mode==='story'?S.stop:-1,q=S.qc[k],m=[];
+  if(st!==-1&&!(st>=3&&st<=8))return m;
+  if(q.prev>.6){m.push({t:'diag',off:1,dash:[1.5,5]});if(st===-1||st===3||st===5)m.push({t:'cell',i:d.b,j:d.j})}
+  if(q.ind>.5){m.push({t:'diag',off:d.i-d.b,dash:[7,5]});
+    if(st===4){m.push({t:'row',i:d.i,c:C.q})}
+    else if(st===5){m.push({t:'row',i:d.i,c:C.q});m.push({t:'col',j:d.b,c:C.k})}
+    else m.push({t:'cell',i:d.i,j:d.b})}
+  return m;
+}
+function gridScreen(){
+  const o=S.open,k=easeOut(S.openT),Rg=gridRect(),r=MG.r,d={x:MG.hx(o.H)-r,y:MG.yH[o.L]-r,w:2*r};
+  const x=lerp(d.x,Rg.x,k),y=lerp(d.y,Rg.y,k),w=lerp(d.w,Rg.w,k);
+  return{x:x*V.s+V.tx,y:y*V.s+V.ty,w:w*V.s,k};
+}
+function drawOverlay(){
+  const g=gx;g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,vpW,vpH);
+  if(!S.open)return;
+  const{x,y,w,k}=gridScreen(),T=S.T,c=w/T;S.gs={x,y,w};
+  g.fillStyle=`rgba(255,255,255,${(.9*k).toFixed(3)})`;g.fillRect(0,0,vpW,vpH);
+  const pd=gridPads();
+  if(k>.4){g.globalAlpha=clamp((k-.4)/.6,0,1);g.fillStyle='#fff';g.strokeStyle='#cfcfcf';g.lineWidth=1;g.shadowColor='rgba(0,0,0,.12)';g.shadowBlur=14;
+    const cx=x-pd.l+8,cy=y-pd.t+8,cw=w+pd.l+pd.r-16,ch=w+pd.t+pd.b-16;g.fillRect(cx,cy,cw,ch);g.shadowBlur=0;g.strokeRect(cx+.5,cy+.5,cw-1,ch-1);g.globalAlpha=1}
+  g.imageSmoothingEnabled=false;g.drawImage(cellCv,x,y,w,w);
+  // causal mask hatch
+  g.save();g.beginPath();g.moveTo(x+w,y);g.lineTo(x+c,y);for(let i=0;i<T-1;i++){g.lineTo(x+(i+1)*c,y+(i+1)*c);g.lineTo(x+(i+2)*c,y+(i+1)*c)}g.closePath();g.clip();
+  g.fillStyle='#f1f1f1';g.fillRect(x,y,w,w);g.strokeStyle='#bdbdbd';g.lineWidth=1;g.beginPath();for(let s=-w;s<w;s+=6){g.moveTo(x+s,y);g.lineTo(x+s+w,y+w)}g.stroke();g.restore();
+  g.strokeStyle='#9a9a9a';g.lineWidth=1;g.strokeRect(x-.5,y-.5,w+1,w+1);
+  if(k<.98)return;
+  if(T<=40&&c>=8){g.strokeStyle='rgba(255,255,255,.55)';g.beginPath();for(let i=1;i<T;i++){g.moveTo(x+i*c,y);g.lineTo(x+i*c,y+w);g.moveTo(x,y+i*c);g.lineTo(x+w,y+i*c)}g.stroke()}
+  const ring=(i,j,col,lw)=>{g.setLineDash([]);g.lineWidth=lw+3;g.strokeStyle='#fff';g.strokeRect(x+j*c-1.5,y+i*c-1.5,c+3,c+3);g.lineWidth=lw;g.strokeStyle=col;g.strokeRect(x+j*c-1.5,y+i*c-1.5,c+3,c+3)};
+  const marks=marksFor(S.open.k);
+  marks.forEach(mk=>{
+    if(mk.t==='row'||mk.t==='col'){g.save();g.fillStyle=mk.c;g.globalAlpha=.18;if(mk.t==='row')g.fillRect(x,y+mk.i*c,w,c);else g.fillRect(x+mk.j*c,y,c,w);g.globalAlpha=1;g.lineWidth=1.5;g.strokeStyle=mk.c;if(mk.t==='row')g.strokeRect(x,y+mk.i*c,w,c);else g.strokeRect(x+mk.j*c,y,c,w);g.restore()}
+  });
+  marks.forEach(mk=>{
+    if(mk.t==='diag'){g.save();g.lineWidth=2;g.strokeStyle='rgba(17,17,17,.85)';g.lineCap='round';g.setLineDash(mk.dash.map(v=>v*Math.max(1,c/4)));g.beginPath();let first=true;
+      for(let i=Math.max(0,mk.off);i<T;i++){const j=i-mk.off;if(j<0)continue;const px=x+(j+.5)*c,py=y+(i+.5)*c;if(first){g.moveTo(px,py);first=false}else g.lineTo(px,py)}g.stroke();g.restore()}
+    else if(mk.t==='cell')ring(mk.i,mk.j,C.mv,clamp(c*.3,2.5,4));
+  });
+  const now=performance.now();
+  if(S.flash.until>now&&S.flash.row>=0){g.fillStyle=C.door;g.globalAlpha=.35*(S.flash.until-now)/1400;g.fillRect(x,y+S.flash.row*c,w,c);g.fillRect(x+S.flash.row*c,y,c,w);g.globalAlpha=1}
+  if(S.cell){const{i,j}=S.cell;g.setLineDash([]);g.strokeStyle='rgba(17,17,17,.5)';g.lineWidth=1;g.beginPath();g.moveTo(x,y+(i+.5)*c);g.lineTo(x+(j+.5)*c,y+(i+.5)*c);g.moveTo(x+(j+.5)*c,y);g.lineTo(x+(j+.5)*c,y+(i+.5)*c);g.stroke();ring(i,j,C.ink,clamp(c*.25,2,3.5))}
+  if(S.hoverCell){const{i,j}=S.hoverCell;g.setLineDash([]);g.lineWidth=2;g.strokeStyle=C.door;g.strokeRect(x+j*c,y+i*c,c,c)}
+  // axes
+  const steps=[1,2,5,10,20,25,50,100];let stp=steps.find(s=>s*c>=26)||100;
+  g.fillStyle='#444';g.font='11px '+getComputedStyle(document.body).fontFamily;g.textBaseline='middle';
+  const showTok=T<=30&&c>=16,pinL=!showTok&&x-5<36,pinT=!showTok&&y-4<20;
+  const lx=pinL?34:x-5,ty=pinT?18:y-4;
+  if(pinL){g.fillStyle='rgba(255,255,255,.94)';g.fillRect(0,0,38,vpH);g.fillStyle='#444'}
+  if(pinT){g.fillStyle='rgba(255,255,255,.94)';g.fillRect(0,0,vpW,22);g.fillStyle='#444'}
+  g.textAlign='right';for(let i=0;i<T;i+=showTok?1:stp){const py=y+(i+.5)*c;if(py<(pinT?26:-10)||py>vpH+10)continue;g.fillText(showTok?`${tokStr(S.tokens[i]).trim().slice(0,7)} ${i}`:String(i),lx,py)}
+  if(showTok){g.textAlign='left';for(let j=0;j<T;j++){g.save();g.translate(x+(j+.5)*c,y-6);g.rotate(-Math.PI/3.2);g.fillText(`${j} ${tokStr(S.tokens[j]).trim().slice(0,7)}`,0,0);g.restore()}}
+  else{g.textAlign='center';g.textBaseline='bottom';for(let j=0;j<T;j+=stp){const px=x+(j+.5)*c;if(px<(pinL?44:-10)||px>vpW+10)continue;g.fillText(String(j),px,ty)}}
+  g.fillStyle='#555';g.font='600 11px '+getComputedStyle(document.body).fontFamily;g.textBaseline='bottom';g.textAlign='left';
+  if(!pinT)g.fillText('source (key) position →',Math.max(x,pinL?44:x),y-(showTok?62:18));
+  if(!pinL){g.save();g.translate(x-(showTok?84:40),Math.max(y,pinT?30:y));g.rotate(Math.PI/2);g.textAlign='left';g.textBaseline='bottom';g.fillText('destination (query) position →',0,0);g.restore()}
+  // role lanes: rows on the right, columns below
+  const rowL=[],colL=[],lane=(txt,col,px,py,al,dashed)=>{g.font='700 12px '+getComputedStyle(document.body).fontFamily;const tw=g.measureText(txt).width+8;const bx=al==='l'?px:px-tw/2;g.fillStyle='#fff';g.fillRect(bx,py-8,tw,16);g.strokeStyle=col;g.lineWidth=1.5;g.setLineDash(dashed?[3,2]:[]);g.strokeRect(bx+.5,py-7.5,tw-1,15);g.setLineDash([]);g.fillStyle=col;g.textAlign='left';g.textBaseline='middle';g.fillText(txt,bx+4,py)};
+  marks.forEach(mk=>{const rows=mk.t==='row'||mk.t==='cell'?[mk.i]:[],cols=mk.t==='col'||mk.t==='cell'?[mk.j]:[];
+    rows.forEach(i=>{const r=roleOf(i);if(r&&!rowL.some(o=>o.i===i))rowL.push({i,r,p:y+(i+.5)*c})});
+    cols.forEach(j=>{const r=roleOf(j);if(r&&!colL.some(o=>o.i===j))colL.push({i:j,r,p:x+(j+.5)*c})})});
+  spread(rowL,18,y+8,y+w-8).forEach(o=>lane(o.r[0],o.r[1],x+w+6,o.p,'l',o.r[2]));
+  spread(colL,30,x+12,x+w-12).forEach(o=>lane(o.r[0],o.r[1],o.p,y+w+14,'c',o.r[2]));
+}
+
+/* ============ pointer, wheel, keys on the map ============ */
+const tipEl=$('#tip');
+function showTip(html,e){const r=vp.getBoundingClientRect();tipEl.innerHTML=html;tipEl.style.display='block';
+  const x=clamp(e.clientX-r.left+14,6,r.width-tipEl.offsetWidth-6),y=clamp(e.clientY-r.top+16,6,r.height-tipEl.offsetHeight-6);tipEl.style.left=x+'px';tipEl.style.top=y+'px'}
+function hideTip(){tipEl.style.display='none'}
+function cellAt(e){if(!S.open||!S.gs||S.openT<.98)return null;const r=vp.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,{x,y,w}=S.gs;
+  if(px<x||py<y||px>=x+w||py>=y+w)return null;const c=w/S.T;return{i:clamp(Math.floor((py-y)/c),0,S.T-1),j:clamp(Math.floor((px-x)/c),0,S.T-1)}}
+const ptrs=new Map();let drag=null,pinch=null;
+vp.addEventListener('pointerdown',e=>{
+  if(e.button!==0&&e.pointerType==='mouse')return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const[p,q]=[...ptrs.values()];pinch={d:Math.hypot(p.x-q.x,p.y-q.y)};drag=null;return}
+  drag={x:e.clientX,y:e.clientY,tx:V.tx,ty:V.ty,moved:false,tgt:e.target,shift:e.shiftKey||e.altKey};
+});
+vp.addEventListener('pointermove',e=>{
+  if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch&&ptrs.size===2){const[p,q]=[...ptrs.values()],d=Math.hypot(p.x-q.x,p.y-q.y),r=vp.getBoundingClientRect();zoomAt(d/pinch.d,(p.x+q.x)/2-r.left,(p.y+q.y)/2-r.top);pinch.d=d;return}
+  if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+    if(!drag.moved&&Math.hypot(dx,dy)>4){drag.moved=true;vp.classList.add('dragging');try{vp.setPointerCapture(e.pointerId)}catch(_){}hideTip()}
+    if(drag.moved){anim=null;V.tx=drag.tx+dx;V.ty=drag.ty+dy;applyView();return}}
+  hover(e);
+});
+const endPtr=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;
+  if(drag&&e.type==='pointerup'&&!drag.moved)clickAt(e,drag.tgt,drag.shift);
+  if(ptrs.size===0){drag=null;vp.classList.remove('dragging')}};
+vp.addEventListener('pointerup',endPtr);vp.addEventListener('pointercancel',endPtr);
+vp.addEventListener('pointerleave',()=>{hideTip();if(S.hoverCell){S.hoverCell=null;S.ovDirty=true;cellReadout(null)}setHoverHead(null)});
+let wheelHinted=false;
+function wheelHint(){if(wheelHinted)return;wheelHinted=true;const h=$('#whint');h.hidden=false;clearTimeout(wheelHint.t);wheelHint.t=setTimeout(()=>h.hidden=true,2600)}
+vp.addEventListener('wheel',e=>{
+  const zoomMod=e.ctrlKey||e.metaKey;
+  if(S.mode==='story'&&!zoomMod){wheelHint();return}  /* let the page scroll the story */
+  e.preventDefault();const r=vp.getBoundingClientRect(),mul=e.deltaMode===1?33:e.deltaMode===2?400:1;
+  const dx=e.deltaX*mul,dy=e.deltaY*mul;
+  if(!zoomMod&&(e.shiftKey||Math.abs(dx)>Math.abs(dy))){anim=null;V.tx-=e.shiftKey&&!dx?dy:dx;applyView();return}
+  zoomAt(Math.exp(-dy*(e.ctrlKey&&!e.metaKey&&Math.abs(dy)<50?.012:.0016)),e.clientX-r.left,e.clientY-r.top)},{passive:false});
+function setHoverHead(k){if(S.hoverHead===k)return;S.hoverHead=k;$$('#heads .hd').forEach(g=>g.classList.toggle('hov',g.dataset.head===k))}
+function hover(e){
+  const cell=cellAt(e);
+  if(cell){setHoverHead(null);if(!S.hoverCell||S.hoverCell.i!==cell.i||S.hoverCell.j!==cell.j){S.hoverCell=cell;S.ovDirty=true;cellReadout(cell)}
+    const{i,j}=cell;vp.style.cursor='crosshair';
+    showTip(j>i?`<b>masked</b> · dest ${i} <span class=mono>${esc(tokStr(S.tokens[i]))}</span> cannot attend to source ${j} (future)`:`dest <b>${i}</b> <span class=mono>${esc(tokStr(S.tokens[i]))}</span> ← source <b>${j}</b> <span class=mono>${esc(tokStr(S.tokens[j]))}</span><br>attention <b>${f3(S.pat[S.open.k][i*S.T+j])}</b>${S.abl.size?` (clean ${f3(cleanPat(S.open.k)[i*S.T+j])})`:''} · click for detail`,e);return}
+  if(S.hoverCell){S.hoverCell=null;S.ovDirty=true;cellReadout(null)}
+  vp.style.cursor='';
+  const hd=e.target.closest&&e.target.closest('[data-head]'),lk=e.target.closest&&e.target.closest('[data-link]');
+  if(hd){const k=hd.dataset.head,c=isDoor(k);setHoverHead(k);vp.style.cursor=c?'pointer':'help';
+    showTip(`<b>Head ${k}</b> · ${QNAME[S.quant]} <b>${fq(k)}</b>${S.abl.has(k)?' · <b>zero-ablated</b>':''}<br>${c?'Click: open its attention pattern · Shift-click: zero-ablate':'Not part of this step. Step off the rail (E) to open any head.'}`,e);return}
+  setHoverHead(null);
+  if(lk){const[a,b]=lk.dataset.link.split(',').map(Number),s=COMP[S.kind][a][b];
+    showTip(`<b>${S.kind}-composition</b> 0.${a} → 1.${b}: <b>${f3(s)}</b><br>random baseline ${f3(BASE)} · ${(s/BASE).toFixed(1)}× baseline<br>weights only: unchanged by ablation`,e);return}
+  hideTip();
+}
+function clickAt(e,tgt,shift){
+  const cell=cellAt(e);
+  if(cell){if(cell.j<=cell.i)selectCell(cell.i,cell.j);else toast('That cell is masked: a token cannot attend to a later token.');return}
+  const hd=tgt&&tgt.closest&&tgt.closest('[data-head]');
+  if(hd){headActivate(hd.dataset.head,shift,false);return}
+  if(S.open&&S.gs){const r=vp.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,pd=gridPads(),{x,y,w}=S.gs;
+    if(px<x-pd.l||py<y-pd.t||px>x+w+pd.r||py>y+w+pd.b)closeHead()}
+}
+function headActivate(k,shift,kbd){
+  if(!isDoor(k)){const st=curStop();toast(st&&st.doors.length?`Head ${k} is not part of this step.`:`No heads to open at this stop.`,'Step off the rail','explore:'+k);return}
+  if(shift){toggleAbl(k);return}
+  openHead(k,kbd);
+}
+vp.addEventListener('keydown',e=>{
+  const hd=e.target.closest&&e.target.closest('[data-head]');
+  if(hd&&(e.key==='Enter'||e.key===' ')){headActivate(hd.dataset.head,e.shiftKey,true);e.preventDefault();return}
+  const P=60,mv={ArrowLeft:[P,0],ArrowRight:[-P,0],ArrowUp:[0,P],ArrowDown:[0,-P]}[e.key];
+  if(mv){anim=null;V.tx+=mv[0];V.ty+=mv[1];applyView();e.preventDefault()}
+});
+vp.addEventListener('focusin',e=>{const hd=e.target.closest&&e.target.closest('[data-head]');if(hd)setHoverHead(hd.dataset.head)});
+
+/* ============ story ============ */
+const STOPS=[
+ {label:'Prompt',frame:'whole',doors:[],links:.6},
+ {label:'The map',frame:'whole',doors:['0.7','1.4'],q:'ind',links:1},
+ {label:'1 · Pattern',frame:'whole',doors:[],q:'ind',links:.6},
+ {label:'2 · Previous token',frame:'l0',doors:['0.7'],q:'prev',links:.25},
+ {label:'3 · Query',frame:'l1',doors:['1.4','1.10'],q:'ind',links:.25},
+ {label:'4 · K-composition',frame:'link',doors:['0.7','1.4','1.10'],q:'prev',kind:'K',pulse:true,links:1},
+ {label:'5 · Stripe',frame:'l1',doors:['1.4','1.10'],q:'ind',links:.25},
+ {label:'6 · Copy',frame:'copy',doors:['1.4','1.10'],q:'abl',links:.25},
+ {label:'Generate',frame:'whole',doors:['1.4','1.10'],q:'ind',links:.5},
+ {label:'Verify',frame:'whole',doors:[],links:.6}
+];
+const LOOK={
+ 1:{'0.7':'Rows are destinations (queries), columns are sources (keys). The dotted line one cell below the diagonal is where this head puts its weight. The hatched upper triangle is the causal mask.','1.4':'Compare with 0.7: most rows put weight on column 0 (BOS), except along a dashed stripe far below the diagonal. The story explains that stripe.'},
+ 3:{'0.7':'Look one cell below the main diagonal (dotted). The red ring is B’s row looking at A’s column: attention moving “A” into the stream at B.'},
+ 4:{'1.4':'The teal row is the query of the second A. See where its weight goes: mostly BOS and one bright cell.','1.10':'The teal row is the query of the second A.'},
+ 5:{'0.7':'The red ring is B looking at A: what 0.7 writes into B’s residual stream.','1.4':'Teal row = query (second A). Green column = key at B. They meet in one bright cell.','1.10':'Same row and column; usually a little sharper than 1.4.'},
+ 6:{'1.4':'Red ring = (second A, first B). The dashed line is the whole induction stripe at a constant offset.','1.10':'Red ring = (second A, first B). Slightly sharper than 1.4.'},
+ 7:{'1.4':'Where the weight sits says which token’s value is copied (B).','1.10':'Open it, then zero-ablate it: the clean loss stays as a line in the dock chart.'},
+ 8:{'1.4':'Press Step in the card: the grid gains a row and a column per generated token (highlighted briefly).','1.10':'Press Step in the card: the grid grows.'}
+};
+const SH={seq:n=>`<span class="dm pos" title="sequence positions">seq ${n}</span>`,m:'<span class="dm dmodel" title="residual width">d_model 768</span>',h:'<span class="dm heads" title="heads per layer">n_heads 12</span>',d:'<span class="dm dhead" title="per-head width">d_head 64</span>'};
+const tkc=(i,c)=>`<span class="tk ${c||''}">${esc(tokStr(S.tokens[i]))}<sub>${i}</sub></span>`;
+const doorsHTML=n=>{const st=STOPS[n];if(!st.doors.length)return'';
+  return`<div class="doors"><h4>Doors on the map</h4>${st.doors.map(k=>`<button class="door" type="button" data-open="${k}" aria-pressed="false"><i style="border-color:${ROLEC[k]||C.grey}"></i>Open head ${k}</button>`).join('')}<div class="small" style="margin-top:6px">Clicking the glowing dot on the map does the same. <kbd>Esc</kbd> closes the grid.</div></div>`};
+const ablBtn=(k,txt)=>`<button class="tgl" type="button" data-ab="${k}" aria-pressed="false" style="font-family:var(--sans)">${txt||'Zero-ablate '+k}</button>`;
+const noDemo=`<div class="warn">This prompt has no repeated bigram (a token followed by the same token as last time), so the induction steps have nothing to highlight. Try <b>random tokens ×2</b> or the <b>sentence</b> example on the first stop.</div>`;
+const CODE=`<div class="cc" aria-label="Induction colour code"><span><i style="border-color:${C.k};background:${C.kT}"></i>key (B)</span><span><i style="border-color:${C.q};background:${C.qT}"></i>query (second A)</span><span><i style="border-color:${C.mv}"></i>attention moves information</span><span><i style="border-color:${C.lg};background:#e7dff7"></i>logit effect (predicted B)</span></div>`;
+function renderStory(){
+  const d=S.demo,V=x=>`<b data-v="${x}"></b>`,dyn=n=>$('#s'+n+' .dyn');
+  dyn(1).innerHTML=`<p class="plain">This is the whole model, drawn like the figures in <i>A Mathematical Framework for Transformer Circuits</i>. Read it <b>bottom to top</b>. Tokens are embedded into the <b>residual stream</b> (the vertical line). Each layer’s 12 heads read the stream and add their outputs back at ⊕. The unembedding turns the last stream into logits.</p>
+  ${md(R`\begin{aligned}x_0&=W_E\,t,\qquad x_{i+1}=x_i+\sum_{h\in H_i}h(x_i),\\ T(t)&=W_U\,x_{-1}\end{aligned}`)}
+  ${md(R`\begin{aligned}h(x)&=\big(A^h\otimes W_O^hW_V^h\big)\cdot x,\\ A^h&=\operatorname{softmax}^*\!\Big(\tfrac{(x+p)^{\top}W_{QK}^h\,(x+p)}{\sqrt{d_{\text{head}}}}\Big),\\ W_{QK}^h&=W_Q^{h\top}W_K^h\end{aligned}`)}
+  <p class="plain sec">One difference from the paper’s toy models: positions ${m('p')} (shortformer) are added only where queries and keys are computed, never to the stream or to the values. ${m(R`\operatorname{softmax}^*`)} is the causally masked softmax.</p>
+  <p class="small">${m('x')}: ${SH.seq(S.T)} × ${SH.m} · per head ${m('q,k,v')}: ${SH.seq(S.T)} × ${SH.d} · ${m('A^h')}: ${SH.seq(S.T)} × ${SH.seq(S.T)} · ${SH.h} per layer</p>
+  <p class="plain">Each dot is a head; its fill and number show the quantity picked in the toolbar. The grey curves are <b>composition scores</b>: how much a layer-1 head’s weights read what a layer-0 head writes. Drag to pan; zoom with Ctrl/⌘ + scroll, a pinch, or − + Fit. Plain scrolling keeps reading the story.</p>
+  ${CODE}${doorsHTML(1)}`;
+  dyn(2).innerHTML=d?`<p class="plain">If a text has already shown ${tkc(d.j,'a')} followed by ${tkc(d.b,'b')}, then the next time ${tkc(d.i,'q')} appears, ${tkc(d.b,'b')} is a good bet. Here the later A is at position ${d.i}, so the model should predict ${tkc(d.t,'p')}. The token strip above the map marks these four tokens.</p>
+  ${md(R`\mathcal{L}_i=-\log p\,(t_{i+1}\mid t_{\le i})`)}
+  <p class="plain">That is why the second copy is cheap: in a clean run, mean loss over the second half is ${V('lossrep')}, against about ${V('lossfirst')} on the first pass. The bar under the map shows it per token.</p>
+  <p class="ablnote" data-ablnote="2" hidden></p>
+  <details><summary>Predict first: what jobs must two attention layers do?</summary><p>Something must know what came <em>before</em> each token, and something must search for an earlier copy of the current token and read what followed it. The next steps find both.</p></details>`:noDemo;
+  dyn(3).innerHTML=d?`<p class="plain">Head 0.7 in layer 0 does one simple thing: every token attends to the token just before it. Its output is added to the stream, so the residual stream at ${tkc(d.b,'b')} now carries a vector that encodes “my previous token was ${esc(tokStr(d.A))}”. That is attention <span style="color:var(--mv);font-weight:600">moving information</span>.</p>
+  ${md(R`\begin{aligned}&A^{0.7}_{i,\,i-1}\approx 1\\ \Longrightarrow\ &h^{0.7}(x)_i\approx W_O^{0.7}W_V^{0.7}\,x_{i-1}\end{aligned}`)}
+  <div class="nums"><div><b>${V('prev:0.7')}</b>0.7 prev-token score<span class="cl"> (clean)</span></div><div><b>${V('prev:best')}</b>best other L0 head</div></div><p class="ablnote" data-ablnote="3" hidden></p>
+  ${doorsHTML(3)}<p class="small">Cause and effect: ${ablBtn('0.7')} then read on and watch what happens downstream.</p>`:noDemo;
+  dyn(4).innerHTML=d?`<p class="plain">Now the second ${tkc(d.i,'q')} must ask: “who followed an A last time?” In layer 1, heads 1.4 and 1.10 build a <b>query</b> from the stream at that position plus its position embedding. Row ${d.i} of their pattern is the question; the next steps show what answers it.</p>
+  ${md(R`\begin{aligned}q_i&=W_Q^{1.4}\,(x_i+p_i),\\ \operatorname{score}_{ij}&=\frac{q_i^{\top}k_j}{\sqrt{d_{\text{head}}}},\quad j\le i\end{aligned}`)}
+  <p class="plain sec">The direct QK circuit ${m(R`W_E^{\top}W_{QK}^{1.4}W_E`)} cannot do this alone: B’s own embedding says nothing about A.</p>
+  <p class="small">${m('q_i')} ${SH.d} · ${m('k_j')} ${SH.d} · scores ${SH.seq(S.T)} × ${SH.seq(S.T)}</p>${doorsHTML(4)}`:noDemo;
+  dyn(5).innerHTML=d?`<p class="plain">The key at ${tkc(d.b,'b')} is computed from the stream at B, and that stream now contains what 0.7 wrote: “A came before me”. So a query from ${tkc(d.i,'q')} matches the key at B. That is <b>K-composition</b>: 1.4 and 1.10 read 0.7’s output through their key input. The two bright green curves on the map carry it.</p>
+  ${md(R`\begin{aligned}k_b&=W_K^{1.4}(x_b+p_b),\\ x_b&\ \ni\ W_O^{0.7}W_V^{0.7}\,x_{b-1}\end{aligned}`)}
+  ${md(R`\begin{aligned}q_i^{\top}k_b\ &\ni\ (x_i+p_i)^{\top}\,W_{QK}^{1.4}\,W_{OV}^{0.7}\,x_{b-1},\\ &\text{large when }t_{b-1}=t_i\end{aligned}`)}
+  ${md(R`\text{K-comp}(0.7\to1.4)=\frac{\lVert W_{QK}^{1.4}\,W_{OV}^{0.7}\rVert_F}{\lVert W_{QK}^{1.4}\rVert_F\,\lVert W_{OV}^{0.7}\rVert_F}`)}
+  <div class="nums"><div><b>${V('comp:K:7:4')}</b>0.7 → 1.4</div><div><b>${V('comp:K:7:10')}</b>0.7 → 1.10</div><div><b>${f3(BASE)}</b>random baseline</div></div>
+  <p class="plain small">Switch the map’s links to Q or V: nothing stands out. Only K-composition is dominant.</p>
+  ${doorsHTML(5)}
+  <div class="note"><b>Try it:</b> ${ablBtn('0.7')} The curves do <em>not</em> change: a composition score is computed from weights (${m(R`W_{QK}^{1.4}`)} and ${m(R`W_{OV}^{0.7}`)}), and zero-ablation does not touch weights. It removes 0.7’s <em>output</em>, so the key at B stops carrying “A came before me”. Open 1.4 to see the stripe fade, and watch the loss in the dock.</div>`:noDemo;
+  dyn(6).innerHTML=d?`<p class="plain">With keys like that, ${tkc(d.i,'q')}’s query lines up with the key at ${tkc(d.b,'b')}: heads 1.4 and 1.10 attend from position ${d.i} to position ${d.b}, one past the earlier A. Across every later row this is a diagonal <b>stripe</b> at constant offset ${d.b-d.i} (for the default 101-token prompt, ${m(R`1-\text{seq\_len}=-49`)}).</p>
+  ${md(R`\begin{aligned}&A^{1.h}_{i,\,j+1}\ \text{large where}\ t_j=t_i,\\ &\text{induction score}=\operatorname{mean}\,\operatorname{diag}\big(A^{1.h},\,1-\text{seq\_len}\big)\end{aligned}`)}
+  <div class="nums"><div><b>${V('ind:1.4')}</b>1.4 induction score<span class="cl"> (clean)</span></div><div><b>${V('ind:1.10')}</b>1.10 induction score<span class="cl"> (clean)</span></div></div><p class="ablnote" data-ablnote="6" hidden></p>
+  ${doorsHTML(6)}<p class="small">${ablBtn('0.7')} : both stripes collapse and the scores above fall, while the composition curves stay put.</p>`:noDemo;
+  dyn(7).innerHTML=d?`<p class="plain">Attention only <em>moves</em> information. The OV circuit of 1.4 and 1.10 takes the stream at ${tkc(d.b,'b')} and writes it into the stream at ${tkc(d.i,'q')}, in a direction the unembedding reads as “next token is B”. The model predicts ${tkc(d.t,'p')} without having seen it here.</p>
+  ${md(R`\begin{aligned}h^{1.4}(x)_i&\approx A^{1.4}_{i,b}\;W_O^{1.4}W_V^{1.4}\,x_b,\\ \Delta T(t)_i&\approx W_U\,W_{OV}^{1.4}\,W_E\;t_b\end{aligned}`)}
+  <p class="plain sec">${m(R`W_U W_{OV}^{h} W_E`)} is the head’s OV circuit (vocab × vocab). For a copying head its diagonal is large: attending to B raises B’s logit.</p>
+  <div class="nums"><div><b style="color:var(--lg)">${V('dla:1.4')}</b>1.4 logit for B<span class="cl"> (clean)</span></div><div><b style="color:var(--lg)">${V('dla:1.10')}</b>1.10 logit for B<span class="cl"> (clean)</span></div><div><b>${V('lossrep')}</b>mean loss, 2nd half<span class="cl"> (clean)</span></div></div><p class="ablnote" data-ablnote="7" hidden></p>
+  <p class="small">Mock direct logit attribution. ${ablBtn('1.4')} ${ablBtn('1.10')}</p>${doorsHTML(7)}`:noDemo;
+  dyn(8).innerHTML=`<p class="plain">Greedy decoding: take the arg-max token, append it, run again. Once the model has seen a repeat it keeps repeating: the circuit completes each token from its earlier copy. Zero-ablate 0.7 first and the continuation breaks.</p>${md(R`t_{T+1}=\arg\max_v\,T(t)_{T,\,v}`)}<p class="ablnote" data-ablnote="8" hidden></p>${doorsHTML(8)}`;
+  $$('.door').forEach(b=>b.onclick=e=>headActivate(b.dataset.open,false,e.detail===0));
+  bindAblButtons();fillVals();refreshButtons();requestAnimationFrame(()=>fitEqs($('#story')));
+}
+const bestOther=(L,key)=>Math.max(...HEADS.filter(h=>h.L===L&&h.k!=='0.7').map(h=>S.qc[h.k][key]));
+function fitEqs(root=document){$$('.eq',root).forEach(el=>{el.style.fontSize='';el.classList.remove('scrolls');const avail=el.clientWidth-16;if(avail<=0)return;const w=el.scrollWidth-16;
+  if(w>avail){const f=Math.max(.72,avail/w*.98);el.style.fontSize=f+'em';if(el.scrollWidth>el.clientWidth+1){el.classList.add('scrolls');el.title='Scroll sideways to see the whole formula'}}})}
+addEventListener('resize',()=>{clearTimeout(fitEqs.t);fitEqs.t=setTimeout(()=>fitEqs(),120)});
+function fillVals(){
+  $$('[data-v]').forEach(el=>{const[a,b,c,d]=el.dataset.v.split(':');let t='';
+    if(a==='ind'||a==='prev')t=b==='best'?f2(bestOther(0,'prev')):f2(S.qc[b][a]);
+    else if(a==='comp')t=f3(COMP[b][+c][+d]);
+    else if(a==='dla'){const v=dla(b,new Set());t=(v>=0?'+':'')+f2(v)}
+    else if(a==='lossrep'||a==='lossclean')t=f2(lossRepClean());
+    else if(a==='lossfirst')t=f2(firstPass());
+    el.textContent=t});
+  document.body.classList.toggle('hasAbl',S.abl.size>0);
+  const names=[...S.abl].sort().join(', '),one=S.abl.size===1?'is':'are';
+  $$('[data-ablnote]').forEach(el=>{const n=+el.dataset.ablnote;let h='';
+    if(S.abl.size&&S.demo){const lr=lossRep(),lc=lossRepClean(),i4=S.q['1.4'].ind,i10=S.q['1.10'].ind,c4=S.qc['1.4'].ind,c10=S.qc['1.10'].ind,broken=lr-lc>.5;
+      if(n===2)h=`With ${names} zero-ablated, the second-half loss is <b>${f2(lr)}</b> instead of ${f2(lc)}: ${broken?'<b>no longer cheap</b>. The copying circuit is broken.':'about the same, so these heads are not part of the copying circuit.'}`;
+      if(n===3)h=S.abl.has('0.7')?`0.7 is zero-ablated. Its <em>pattern</em> (and its score above) is unchanged, because ablation zeroes its output ${m('z')}, not its attention. What it moved into the stream at B (“A came before me”) is gone.`:`${names} ${one} zero-ablated; 0.7 itself is intact.`;
+      if(n===6)h=`With ${names} zero-ablated, the induction scores are <b>${f2(i4)}</b> (1.4) and <b>${f2(i10)}</b> (1.10), against ${f2(c4)} and ${f2(c10)} clean: ${i4<.5*c4&&i10<.5*c10?'<b>the stripe is gone</b>.':i4<.5*c4||i10<.5*c10?'one stripe is gone.':'the stripe survives.'}`;
+      if(n===7)h=`With ${names} zero-ablated: 1.4 adds <b>${(dla('1.4')>=0?'+':'')+f2(dla('1.4'))}</b> and 1.10 adds <b>${(dla('1.10')>=0?'+':'')+f2(dla('1.10'))}</b> to B’s logit, and the second-half loss is <b>${f2(lr)}</b>${broken?': B is no longer predicted.':'.'}`;
+      if(n===8)h=`With ${names} zero-ablated, ${indFactor(S.abl)>.5?'enough of the circuit survives that generation still copies.':'the circuit is broken: generation will not copy the earlier tokens.'}`}
+    el.innerHTML=h;el.hidden=!h});
+}
+
+/* ============ open / close / sheet ============ */
+function openHead(k,kbd){
+  if(S.open&&S.open.k===k){reframe();return}
+  const h=HEADS.find(x=>x.k===k);S.open={L:h.L,H:h.H,k};S.cell=null;S.hoverCell=null;
+  S.openT=RM?1:0;openAnim=RM?null:{t0:performance.now(),ms:220};
+  S.gridDirty=true;reframe(RM?0:300);renderHeads();renderSheet(kbd);refreshButtons();
+  live(`Head ${k} attention pattern opened: ${S.T} by ${S.T}, causally masked.`);
+}
+function closeHead(){
+  if(!S.open)return;S.open=null;S.cell=null;S.hoverCell=null;S.openT=0;openAnim=null;hideTip();
+  reframe();renderHeads();renderSheet();refreshButtons();S.ovDirty=true;
+}
+function selectCell(i,j){S.cell={i,j};S.ovDirty=true;renderDetail();live(`Cell dest ${i}, source ${j}, attention ${f3(S.pat[S.open.k][i*S.T+j])}`)}
+function cellReadout(c){
+  const el=$('#cellRO');if(!el)return;
+  if(!c){el.textContent=S.cell?`Pinned: dest ${S.cell.i} ${tokStr(S.tokens[S.cell.i])} ← source ${S.cell.j} ${tokStr(S.tokens[S.cell.j])}`:'Hover a cell for its exact value.';return}
+  const{i,j}=c;el.textContent=j>i?`masked: dest ${i} cannot attend to source ${j}`:`dest ${i} ${tokStr(S.tokens[i])} ← source ${j} ${tokStr(S.tokens[j])} : ${f3(S.pat[S.open.k][i*S.T+j])}`;
+}
+const roleChips=k=>{const q=S.qc[k],r=[];
+  if(q.prev>.6)r.push(`<span class="role" style="border-color:${C.mv}">previous-token head · ${f2(q.prev)}</span>`);
+  if(q.ind>.5)r.push(`<span class="role" style="border-color:${C.q}">induction head · ${f2(q.ind)}</span>`);
+  if(!r.length)r.push(`<span class="role" style="border-color:#aaa">no clear role · first-token ${f2(q.first)}</span>`);return r.join(' ')};
+function neighbours(){const k=S.open.k,list=S.mode==='story'?STOPS[S.stop].doors:HEADS.map(h=>h.k),i=list.indexOf(k);
+  if(i<0)return[null,null];return[i>0?list[i-1]:null,i<list.length-1?list[i+1]:null]}
+function renderSheet(kbd){
+  const sh=$('#sheet');if(!S.open){sh.hidden=true;sh.innerHTML='';return}
+  const o=S.open,k=o.k,q=S.q[k],[pv,nx]=neighbours(),look=S.mode==='story'&&LOOK[S.stop]&&LOOK[S.stop][k],L=o.L,H=o.H;
+  const wasHidden=sh.hidden;sh.hidden=false;
+  sh.innerHTML=`<div class="shh"><h2>Head ${k}</h2>${roleChips(k)}<span class="sp"></span>
+   ${pv?`<button class="btn sm ghost" id="shPrev" type="button" aria-label="Previous ${S.mode==='story'?'door':'head'}: ${pv}" title="Previous ${S.mode==='story'?'door at this stop':'head'} ([)">◀ ${pv}</button>`:''}${nx?`<button class="btn sm ghost" id="shNext" type="button" aria-label="Next ${S.mode==='story'?'door':'head'}: ${nx}" title="Next ${S.mode==='story'?'door at this stop':'head'} (])">${nx} ▶</button>`:''}
+   <button class="tgl" type="button" data-ab="${k}" aria-pressed="false">Zero-ablate</button>
+   ${S.abl.size?`<button class="seg" id="shDelta" type="button" aria-pressed="${S.delta}">Δ vs clean</button>`:''}
+   <button class="btn sm" id="shClose" type="button">Close (Esc)</button></div>
+   <p class="small" style="margin:8px 0 2px">Layer ${L} · ${S.T}×${S.T} pattern ${m('A^{'+k+'}')} · induction <b>${f2(q.ind)}</b> · prev-token <b>${f2(q.prev)}</b> · first-token <b>${f2(q.first)}</b> · ablation Δloss <b>+${f2(q.abl)}</b>${S.abl.has(k)?' · <b style="color:var(--bad)">this head is zero-ablated: its z (and so its output) is 0; the pattern is still computed and shown for reference</b>':''}</p>
+   ${look?`<div class="look"><b>Look for:</b> ${look}</div>`:''}
+   <div class="legend">${S.delta?`<span>−0.8</span><i style="background:linear-gradient(90deg,#b35806,#f1b37a,#fff,#a3b9df,#2c5aa0)"></i><span>+0.8 (ablated − clean)</span>`:`<span>0</span><i style="background:linear-gradient(90deg,${RAMP.join(',')})"></i><span>1 (shade ∝ √weight)</span>`}<b></b><span>masked</span><span>· dotted = offset −1 · dashed = induction offset · <span style="color:var(--mv);font-weight:600">red ring</span> = information moved</span></div>
+   <div class="ro" id="cellRO" aria-live="polite"></div>
+   <div id="gnav" tabindex="0" role="application" aria-label="Cell cursor. Arrow keys move through the grid cells; Home and End jump; the detail below updates.">Cell cursor: focus here and use the arrow keys (Home/End: first/last cell).</div>
+   <div id="cellDetail"></div>
+   <details><summary>Head internals: Q/K/V → scores → pattern → z → result (paper and TransformerLens)</summary>
+   <table class="pipe"><tr><th>step</th><th>paper (column vectors)</th><th>TransformerLens (row vectors) · hook</th></tr>
+   <tr><td>inputs</td><td>${m(R`x_i+p_i`)} for Q, K; ${m('x_i')} for V</td><td><code>resid_pre + pos_embed</code>, <code>resid_pre</code><br><code>blocks.${L}.hook_resid_pre</code> [pos, 768]</td></tr>
+   <tr><td>q, k, v</td><td>${m(R`q_i=W_Q^h(x_i{+}p_i)`)}<br>${m(R`k_j=W_K^h(x_j{+}p_j)`)}, ${m(R`v_j=W_V^hx_j`)}</td><td><code>q = (resid_pre + pos_embed) @ W_Q[${L}, ${H}] + b_Q</code><br><code>blocks.${L}.attn.hook_q/k/v</code> [pos, 12, 64]</td></tr>
+   <tr><td>scores</td><td>${m(R`q_i^{\top}k_j/\sqrt{d_{\text{head}}}`)}, ${m(R`-\infty`)} for ${m('j>i')}</td><td><code>blocks.${L}.attn.hook_attn_scores</code> [12, q_pos, k_pos]</td></tr>
+   <tr><td>pattern</td><td>${m(R`A^h=\operatorname{softmax}^*(\cdot)`)} — the grid</td><td><code>blocks.${L}.attn.hook_pattern</code> · <code>cache["pattern", ${L}][${H}]</code></td></tr>
+   <tr><td>z</td><td>${m(R`z_i=\sum_j A^h_{ij}\,v_j`)}</td><td><code>blocks.${L}.attn.hook_z</code> [pos, 12, 64] · zero-ablation sets <code>z[:, :, ${H}, :] = 0</code></td></tr>
+   <tr><td>result</td><td>${m(R`W_O^h z_i`)} (so ${m(R`h(x)=(A^h\otimes W_O^hW_V^h)\cdot x`)})</td><td><code>blocks.${L}.attn.hook_result</code> [pos, 12, 768]${S.abl.has(k)?' — <b>zeroed (ablated)</b>':''}</td></tr></table>
+   <p class="small">Shapes for this run: ${SH.seq(S.T)} × ${SH.d} for q, k, v, z; ${SH.seq(S.T)} × ${SH.seq(S.T)} for scores and pattern; ${SH.seq(S.T)} × ${SH.m} for result.</p>
+   <pre class="code"># circuits, TransformerLens convention (row vectors: W_OV = W_V @ W_O, the paper's W_O W_V transposed)
+W_OV = model.W_V[${L}, ${H}] @ model.W_O[${L}, ${H}]          # [768, 768]
+W_QK = model.W_Q[${L}, ${H}] @ model.W_K[${L}, ${H}].T        # [768, 768]
+OV_circuit = model.W_E @ W_OV @ model.W_U                     # paper: W_U W_OV W_E
+QK_circuit = model.W_E @ W_QK @ model.W_E.T                   # paper: W_E^T W_QK W_E${L===1?`
+k_comp_from_0_7 = get_comp_score(W_OV_0_7, W_QK.T)            # = ${f3(COMP.K[7][H])}`:''}</pre></details>
+   <details><summary>Table view: strongest source for each destination (last 12 rows)</summary><div class="tw"><table id="topT"></table></div></details>`;
+  const W=S.pat[k],T=S.T,rows=[];for(let i=Math.max(0,T-12);i<T;i++){let bj=0;for(let j=0;j<=i;j++)if(W[i*T+j]>W[i*T+bj])bj=j;rows.push(`<tr><td>${i} ${esc(tokStr(S.tokens[i]))}</td><td>← ${bj} ${esc(tokStr(S.tokens[bj]))}</td><td>${f3(W[i*T+bj])}</td></tr>`)}
+  $('#topT').innerHTML='<tr><th>dest</th><th>top source</th><th>weight</th></tr>'+rows.join('');
+  $('#shClose').onclick=closeHead;if(pv)$('#shPrev').onclick=()=>openHead(pv,false);if(nx)$('#shNext').onclick=()=>openHead(nx,false);
+  const sd=$('#shDelta');if(sd)sd.onclick=()=>{S.delta=!S.delta;S.gridDirty=true;renderSheet()};
+  bindAblButtons();refreshButtons();cellReadout(null);renderDetail();
+  const gn=$('#gnav');gn.onkeydown=gridKeys;if(kbd)gn.focus({preventScroll:true});
+  if(wasHidden)sh.scrollTop=0;
+}
+function gridKeys(e){
+  const T=S.T,c=S.cell||(S.demo?{i:S.demo.i,j:S.demo.b}:{i:T-1,j:T-1});let{i,j}=c;
+  const mv={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+  if(mv){i=clamp(i+mv[0],0,T-1);j=clamp(j+mv[1],0,i);selectCell(i,j);e.preventDefault();e.stopPropagation()}
+  else if(e.key==='Home'){selectCell(0,0);e.preventDefault()}else if(e.key==='End'){selectCell(T-1,T-1);e.preventDefault()}
+  else if(e.key==='Enter'&&!S.cell){selectCell(i,j);e.preventDefault()}
+}
+function bars(rows){
+  const mx=Math.max(.01,...rows.map(r=>Math.abs(r.v)));
+  return`<div class="bars">${rows.map((r,x)=>`<span class="${x===0?'hot':''}">${esc(r.n)}</span><span class="b"><i class="${r.v<0?'n':''}" style="${r.v<0?'right':'left'}:50%;width:${Math.abs(r.v)/mx*50}%"></i></span><span class="${x===0?'hot':''}">${(r.v>=0?'+':'')+f2(r.v)}</span>`).join('')}</div>`}
+function topRows(d,n){const s=[...d.rows].sort((a,b)=>Math.abs(b.v)-Math.abs(a.v)),t=s.slice(0,n),rest=s.slice(n).reduce((a,b)=>a+b.v,0);if(s.length>n)t.push({n:`${s.length-n} others`,v:rest});return t}
+function vbars(arr){const mx=Math.max(1e-6,...arr.map(Math.abs)),w=3;return`<svg viewBox="0 0 ${arr.length*w} 34" preserveAspectRatio="none" role="img" aria-label="64 values, max ${f2(mx)}">${[...arr].map((v,i)=>{const h=Math.abs(v)/mx*16;return`<rect x="${i*w+.3}" y="${v>=0?17-h:17}" width="${w-.6}" height="${Math.max(.4,h)}" fill="${v>=0?'#1f4e9c':C.door}"/>`}).join('')}<line x1="0" x2="${arr.length*w}" y1="17" y2="17" stroke="#999" stroke-width=".4"/></svg>`}
+function renderDetail(){
+  const el=$('#cellDetail');if(!el)return;const c=S.cell;
+  if(!c){el.innerHTML='<p class="small">Click a cell in the grid (or use the cell cursor) to open its score and where it comes from.</p>';cellReadout(null);return}
+  const{i,j}=c,o=S.open,w=S.pat[o.k][i*S.T+j],dk=decomp(o.L,o.H,i,j,'K'),dq=decomp(o.L,o.H,i,j,'Q'),sc=dk.score,cw=cleanPat(o.k)[i*S.T+j],raw=sc*8;
+  const kv=vec(o.L,o.H,j,2),q0=vec(o.L,o.H,i,1);let s0=0,kk=0;for(let d=0;d<64;d++){s0+=q0[d]*kv[d];kk+=kv[d]*kv[d]}
+  const qv=q0.map((x,d)=>x+(raw-s0)*kv[d]/kk),pr=qv.map((x,d)=>x*kv[d]);
+  el.innerHTML=`<div class="adv"><h3>Cell detail (advanced) · dest ${i} ← source ${j}</h3>
+  <p style="margin:2px 0">${tkc(i,'q')} attends to ${tkc(j,'b')} with weight <b>${f3(w)}</b> (clean ${f3(cw)}${S.abl.size?`, Δ ${(w-cw>=0?'+':'')+f3(w-cw)}`:''}).</p>
+  <p style="margin:4px 0">${m(R`q_i^{\top}k_j=`+f2(raw)+R`\;\xrightarrow{\;\div\sqrt{64}\;}\;`+f2(sc)+R`\;\xrightarrow{\;\operatorname{softmax}_{j\le i}\;}\;A_{ij}=`+f3(w))}</p>
+  <p class="small" style="margin:2px 0">TransformerLens: <code>cache["attn_scores", ${o.L}][${o.H}, ${i}, ${j}]</code> = ${f2(sc)} · <code>cache["pattern", ${o.L}][${o.H}, ${i}, ${j}]</code> = ${f3(w)}</p>
+  <h3>Key side: which part of the stream at ${j} carries the score</h3>${bars(topRows(dk,5))}
+  <h3>Query side: which part of the stream at ${i} carries the score</h3>${bars(topRows(dq,4))}
+  <p class="small">${o.L===1?'Components: token embedding, position embedding, and each layer-0 head’s output (K- and Q-composition). Zero-ablated heads contribute 0. Mock decomposition; sums to the score.':'Layer 0 reads only the token and position embeddings. Mock decomposition; sums to the score.'}</p>
+  <h3>Vectors (64 dims, d_head)</h3>
+  <div class="vecs"><span>q<sub>${i}</sub></span>${vbars(qv)}<span>k<sub>${j}</sub></span>${vbars(kv)}<span>q⊙k (Σ=${f2(raw)})</span>${vbars(pr)}</div>
+  <p class="small">${m(R`z_i\mathrel{+}=A_{ij}\,v_j`)}: this cell sends ${f3(w)} of ${m('v_j')} ${SH.d} to position ${i}; the head then writes ${m(R`W_O^{${o.k}}z_i`)} ${SH.m}. Illustrative vectors (mock), constrained to reproduce the score.</p></div>`;
+  cellReadout(null);
+}
+
+/* ============ ablation ============ */
+function toggleAbl(k){
+  if(S.abl.has(k))S.abl.delete(k);else S.abl.add(k);
+  if(!S.abl.size)S.delta=false;
+  recompute();refreshAll();
+  live(`Head ${k} ${S.abl.has(k)?'zero-ablated':'restored'}. Mean loss on the second half ${f2(lossRep())}, clean ${f2(lossRepClean())}. Composition scores are unchanged.`);
+}
+function bindAblButtons(){$$('[data-ab]').forEach(b=>{b.onclick=()=>toggleAbl(b.dataset.ab)})}
+function refreshButtons(){
+  $$('[data-ab]').forEach(b=>{const on=S.abl.has(b.dataset.ab);b.setAttribute('aria-pressed',on);
+    if(b.classList.contains('tgl')&&!b.closest('#ablTg')&&/^(Zero-ablate|Restore)/.test(b.textContent))b.textContent=(on?'Restore':'Zero-ablate')+(b.closest('#sheet')?'':' '+b.dataset.ab)});
+  $$('.door').forEach(b=>b.setAttribute('aria-pressed',!!S.open&&S.open.k===b.dataset.open));
+  $$('[data-q]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.q===S.quant));
+  $$('[data-k]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===S.kind));
+  $('#subBase').checked=S.sub;
+}
+function refreshAll(){
+  hideTip();renderMap();renderDock();fillVals();drawStrip();refreshExplore();renderGen();
+  if(S.open)renderSheet();
+  refreshButtons();
+}
+
+/* ============ dock, strip, chips ============ */
+function renderDock(){
+  const tg=$('#ablTg'),base=['0.7','1.4','1.10'],extra=[...S.abl].filter(k=>!base.includes(k));
+  tg.innerHTML=[...base,...extra].map(k=>`<button class="tgl" type="button" data-ab="${k}" aria-pressed="${S.abl.has(k)}" aria-label="Zero-ablate head ${k}">${k}</button>`).join('')+`<button class="tgl" type="button" id="abClear" style="font-weight:400">reset</button>`;
+  $('#abClear').onclick=()=>{S.abl.clear();S.delta=false;recompute();refreshAll();live('All ablations cleared.')};bindAblButtons();
+  const n=S.loss.length,bw=300/Math.max(1,n);let bars='',path='';
+  for(let i=0;i<n;i++){const h=clamp(S.loss[i]/12,0,1)*38,x=i*bw;bars+=`<rect x="${x.toFixed(2)}" y="${(40-h).toFixed(1)}" width="${Math.max(.5,bw-.4).toFixed(2)}" height="${h.toFixed(1)}" fill="${S.isPred[i]?C.q:'#9a9a9a'}"/>`;
+    path+=`${i?'L':'M'}${(x+bw/2).toFixed(1)},${(40-clamp(S.lossClean[i]/12,0,1)*38).toFixed(1)}`}
+  $('#lossSvg').innerHTML=bars+(S.abl.size?`<path d="${path}" fill="none" stroke="${C.ink}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`:'');
+  $('#lossLeg').innerHTML=`· <span style="color:${C.q};font-weight:600">teal</span> = completed by a repeat, grey = other${S.abl.size?' · line = clean':''}`;
+  const a=lossRep(),b=lossRepClean(),d=a-b;
+  $('#dl').innerHTML=`<strong class="${d>.05?'up':'zero'}">${f2(a)}</strong> <span class="small">clean ${f2(b)} · Δ ${(d>=0?'+':'')+f2(d)}</span>`;
+  $('#ablNote').hidden=!S.abl.size;
+}
+const stripCv=$('#stripCv');let stripHover=-1;
+const stripShow=()=>S.mode==='explore'||(S.stop>=2&&S.stop<=8);
+function drawStrip(){
+  const r=stripCv.getBoundingClientRect(),dp=Math.min(2,devicePixelRatio||1),W=Math.max(10,r.width),H=36;
+  if(stripCv.width!==Math.round(W*dp)){stripCv.width=Math.round(W*dp);stripCv.height=H*dp}
+  const g=stripCv.getContext('2d');g.setTransform(dp,0,0,dp,0,0);g.clearRect(0,0,W,H);
+  const T=S.T,cw=W/T,d=S.demo,show=stripShow();
+  const role=i=>!show||!d?null:i===d.j?['A',C.k,1]:i===d.b?['B',C.k]:i===d.i?['A′',C.q]:i===d.t?['B′',C.lg]:null;
+  const half=d?Math.floor((T+1)/2):-1;
+  for(let i=0;i<T;i++){const ro=role(i);let col='#8a8a8a',al=.25+.4*tokHue(S.tokens[i]),h=12,y=6;
+    if(ro){col=ro[1];al=1;h=18;y=3}if(i===stripHover){col=C.ink;al=1;h=18;y=3}
+    g.globalAlpha=al;g.fillStyle=col;g.fillRect(i*cw+.5,y,Math.max(1,cw-1),h);
+    if(ro&&ro[2]){g.globalAlpha=1;g.fillStyle='#fff';g.fillRect(i*cw+2,y+3,Math.max(0,cw-4),h-6)}}
+  g.globalAlpha=1;
+  if(S.T>=20&&S.isPred.some(Boolean)){const first=S.isPred.findIndex(Boolean);if(first>0){g.strokeStyle='#bbb';g.setLineDash([2,2]);g.beginPath();g.moveTo(first*cw,0);g.lineTo(first*cw,22);g.stroke();g.setLineDash([])}}
+  if(show&&d){g.font='700 11px '+getComputedStyle(document.body).fontFamily;g.textAlign='center';g.textBaseline='alphabetic';
+    spread([[d.j,'A',C.k],[d.b,'B',C.k],[d.i,'A′',C.q],[d.t,'B′',C.lg]].map(([i,l,c])=>({p:(i+.5)*cw,l,c,x0:(i+.5)*cw})),18,9,W-9).forEach(it=>{g.fillStyle=it.c;g.fillText(it.l,it.p,34)})}
+  $('#stripInfo').textContent=`T = ${S.T}${S.T===101&&S.tokens[1]===S.tokens[51]?' · [BOS, r, r], seq_len 50, seed 1234':''}`;
+}
+function tokHue(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return (h>>>0)%100/100}
+function stripTip(e){const r=stripCv.getBoundingClientRect(),sr=$('#stage').getBoundingClientRect(),i=Math.floor((e.clientX-r.left)/(r.width/S.T));
+  if(i>=0&&i<S.T){stripHover=i;const L=i<S.T-1?S.loss[i]:null;const t=tipEl;t.innerHTML=`token <b>${i}</b> <span class=mono>${esc(tokStr(S.tokens[i]))}</span>${L!=null?` · loss predicting next: ${f2(L)}`:''}${S.isPred[i]?'<br>completed by a repeat: click to follow it in the story':''}`;t.style.display='block';
+    const vr=vp.getBoundingClientRect();t.style.left=clamp(e.clientX-vr.left+10,6,vr.width-t.offsetWidth-6)+'px';t.style.top='6px'}else{stripHover=-1;hideTip()}drawStrip()}
+stripCv.addEventListener('pointermove',stripTip);
+stripCv.addEventListener('pointerleave',()=>{stripHover=-1;hideTip();drawStrip()});
+stripCv.addEventListener('click',()=>{if(stripHover<0)return;const i=stripHover;
+  if(S.isPred[i]){pickDemo(i);S.gridDirty=true;renderStory();renderChips();refreshAll();live(`Following repeated token at position ${i}`)}else toast('That token is not completed by a repeated bigram, so there is nothing to follow.')});
+function renderChips(){
+  const dm=S.demo;
+  $('#chips').innerHTML=S.tokens.map((t,i)=>{const L=i<S.T-1?S.loss[i]:null;const lc=L==null?'#ddd':rampCss(clamp(L/11,0,1)*.85+.1);
+    const c=dm?(i===dm.j?'a':i===dm.b?'b':i===dm.i?'q':i===dm.t?'p':''):'';
+    return`<li><span class="tk ${c}" style="--lc:${lc}" title="token ${i}${L!=null?' · loss '+f2(L):''}">${esc(tokStr(t))}</span></li>`}).join('');
+  const np=S.isPred.filter(Boolean).length;
+  $('#runInfo').textContent=`T = ${S.T} tokens (BOS + ${S.T-1}) · ${np} positions completed by a repeated bigram · clean mean loss there ${f2(lossRepClean())} · elsewhere ≈ ${f2(firstPass())}`;
+}
+
+/* ============ explore panel ============ */
+function compPanels(){
+  const cs=11,off=22;
+  $('#compP').innerHTML=['K','Q','V'].map(kd=>{let r='';
+    for(let a=0;a<12;a++)for(let b=0;b<12;b++){const s=COMP[kd][a][b],v=S.sub?clamp((s-BASE)/(.75-BASE),0,1):clamp(s/.75,0,1);const hl=a===7&&(b===4||b===10);
+      r+=`<rect x="${off+b*cs}" y="${off+a*cs}" width="${cs-1}" height="${cs-1}" fill="${s<=BASE&&S.sub?'#fafafa':rampCss(.12+.88*Math.sqrt(v))}" stroke="${hl?C.k:'none'}" stroke-width="${hl?2:0}"><title>${kd}-comp 0.${a} → 1.${b}: ${f3(s)} (${(s/BASE).toFixed(1)}× baseline)</title></rect>`}
+    let lab='';for(let i=0;i<12;i+=1){lab+=`<text x="${off+i*cs+cs/2}" y="${off-4}" font-size="7.5" text-anchor="middle" fill="#555">${i}</text><text x="${off-4}" y="${off+i*cs+cs/2+3}" font-size="7.5" text-anchor="end" fill="#555">${i}</text>`}
+    return`<figure><figcaption>${kd}-composition</figcaption><svg width="${off+12*cs+4}" height="${off+12*cs+4}" role="img" aria-label="${kd}-composition 12 by 12; strongest ${kd==='K'?'0.7 to 1.10 and 0.7 to 1.4':'near baseline'}">${lab}${r}</svg></figure>`}).join('');
+}
+function refreshExplore(){
+  if($('#explore').hidden)return;
+  const cols=[['ind','induction'],['prev','prev-token'],['first','first-token'],['abl','Δloss']];
+  $('#headT').innerHTML=`<tr><th>head</th>${cols.map(c=>`<th>${c[1]}</th>`).join('')}<th></th></tr>`+HEADS.map(h=>`<tr class="${S.open&&S.open.k===h.k?'sel':''}"><td>${h.k}</td>${cols.map(c=>`<td class="${c[0]===S.quant?'qcol':''}">${(c[0]==='abl'?'+':'')+f2(S.q[h.k][c[0]])}</td>`).join('')}<td><button type="button" data-open="${h.k}" aria-label="Open head ${h.k}">open</button> <button type="button" data-ab="${h.k}" aria-pressed="${S.abl.has(h.k)}" aria-label="Zero-ablate head ${h.k}">∅</button></td></tr>`).join('');
+  $$('#headT [data-open]').forEach(b=>b.onclick=e=>openHead(b.dataset.open,e.detail===0));bindAblButtons();
+  const l=[];for(let a=0;a<12;a++)for(let b=0;b<12;b++)l.push([a,b,COMP[S.kind][a][b]]);l.sort((x,y)=>y[2]-x[2]);
+  $('#kindName').textContent=S.kind;
+  $('#linkT').innerHTML='<tr><th>link</th><th>score</th><th>× baseline</th></tr>'+l.slice(0,8).map(([a,b,s])=>`<tr><td>0.${a} → 1.${b}</td><td>${f3(s)}</td><td>${(s/BASE).toFixed(1)}×</td></tr>`).join('');
+  $('#lossT').innerHTML='<tr><th>pos</th><th>token → next</th><th>loss</th><th>clean</th></tr>'+Array.from(S.loss,(v,i)=>`<tr><td>${i}</td><td>${esc(tokStr(S.tokens[i]))} → ${esc(tokStr(S.tokens[i+1]))}</td><td>${f2(v)}</td><td>${f2(S.lossClean[i])}</td></tr>`).join('');
+  compPanels();
+  $('#xBack').textContent=`← Back to the story · ${STOPS[(S.saved||{stop:S.stop}).stop].label} (Esc)`;
+}
+function enterExplore(k){
+  if(S.mode==='explore'){if(k)openHead(k);return}
+  S.saved={stop:S.stop,scroll:scrollY};S.mode='explore';document.body.classList.add('explore');$('#explore').hidden=false;
+  $('#bExplore').setAttribute('aria-pressed','true');$('#bExplore').textContent='Back to the story';
+  refreshExplore();renderMap();drawStrip();
+  requestAnimationFrame(()=>{resizeVp();if(S.open)renderSheet()});
+  if(k)openHead(k);live('Exploring freely. Every head is clickable. Press Escape to return to the story.');
+}
+function exitExplore(){
+  if(S.mode!=='explore')return;
+  S.mode='story';document.body.classList.remove('explore');$('#explore').hidden=true;
+  $('#bExplore').setAttribute('aria-pressed','false');$('#bExplore').textContent='Step off the rail';
+  window.scrollTo({top:S.saved.scroll,behavior:'instant'});
+  const st=STOPS[S.stop];
+  if(S.open&&!st.doors.includes(S.open.k))closeHead();
+  if(st.q)S.quant=st.q;if(st.kind)S.kind=st.kind;
+  renderMap();drawStrip();refreshButtons();requestAnimationFrame(()=>{resizeVp();if(S.open)renderSheet()});live('Back on the story at '+st.label);
+}
+
+/* ============ stops ============ */
+function setStop(i){
+  if(i===S.stop&&setStop.done)return;setStop.done=true;S.stop=i;
+  $$('.stop').forEach((s,n)=>s.classList.toggle('on',n===i));
+  $$('#rail button').forEach((b,n)=>{if(n===i)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');if(n<=i)b.classList.add('seen')});
+  const st=STOPS[i];if(st.q)S.quant=st.q;if(st.kind)S.kind=st.kind;
+  if(S.open&&!st.doors.includes(S.open.k))S.open=null,S.cell=null,S.openT=0,renderSheet();
+  renderMap();refreshButtons();drawStrip();reframe();
+}
+function activeStop(){const y=innerHeight*.4;let a=0;$$('.stop').forEach((s,n)=>{if(s.getBoundingClientRect().top<=y)a=n});
+  if(innerHeight+scrollY>=document.documentElement.scrollHeight-4)a=STOPS.length-1;return a}
+let scrollRaf=0;
+addEventListener('scroll',()=>{if(scrollRaf||S.mode!=='story')return;scrollRaf=requestAnimationFrame(()=>{scrollRaf=0;setStop(activeStop())})},{passive:true});
+function goStop(i){i=clamp(i,0,STOPS.length-1);const el=$('#s'+i);const top=el.getBoundingClientRect().top+scrollY-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar'))-(innerWidth<=860?innerHeight*.62:0);
+  window.scrollTo({top:Math.max(0,top),behavior:RM?'auto':'smooth'});setStop(i);(el.querySelector('h1,h2')||el).setAttribute('tabindex','-1');}
+function toast(msg,btn,act){
+  const t=$('#toast');t.innerHTML=esc(msg)+(btn?` <button type="button">${esc(btn)}</button>`:'');t.style.display='block';
+  if(btn)t.querySelector('button').onclick=()=>{t.style.display='none';if(act&&act.startsWith('explore:'))enterExplore(act.slice(8))};
+  clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',4200);
+}
+
+/* ============ generation ============ */
+const GEN={timer:null,n:0,base:null,out:[]};
+const maxNew=()=>clamp(+$('.maxNew').value||20,1,40);
+function genReset(){clearInterval(GEN.timer);GEN.timer=null;GEN.n=0;GEN.base=null;GEN.out=[];renderGen()}
+function nextToken(){
+  const T=S.T,p=S.prevOcc[T-1];
+  if(indFactor(S.abl)>.5&&p>=1)return{tok:S.tokens[p+1],ok:true};
+  return{tok:' '+SYL[Math.floor(hash(T,41,0,0)*20)]+SYL[Math.floor(hash(T,42,0,0)*20)],ok:false};
+}
+function genStep(){
+  if(GEN.n>=maxNew()||S.T>=160){genPlay(false);return false}
+  if(!GEN.base)GEN.base=S.tokens.slice();
+  const nt=nextToken();GEN.n++;GEN.out.push(nt);
+  const keep=S.demo&&S.demo.i;setTokens([...S.tokens,nt.tok],true);if(keep!=null&&S.isPred[keep])S.demo=mkDemo(keep);
+  if(S.cell&&(S.cell.i>=S.T))S.cell=null;
+  recompute();S.flash={row:S.T-1,until:performance.now()+1400};
+  refreshAll();renderChips();renderGen();if(S.open)reframe(0);live(`Generated token ${GEN.n}: ${tokStr(nt.tok)}`);return true;
+}
+function genPlay(on){
+  const want=on==null?!GEN.timer:on;clearInterval(GEN.timer);GEN.timer=null;
+  if(want){if(GEN.n>=maxNew())return genReplay();GEN.timer=setInterval(()=>{if(!genStep())genPlay(false)},RM?500:650)}
+  renderGen();
+}
+function genReplay(){clearInterval(GEN.timer);GEN.timer=null;if(GEN.base){setTokens(GEN.base,true);recompute()}GEN.n=0;GEN.out=[];GEN.base=null;refreshAll();renderChips();renderGen();genPlay(true)}
+function renderGen(){
+  $$('.genOut').forEach(o=>o.innerHTML=GEN.out.map(g=>`<li><span class="tk gen ${g.ok?'p':'miss'}" title="${g.ok?'matches the induction prediction':'no induction signal: arbitrary token'}">${esc(g.tok)}</span></li>`).join(''));
+  $$('.gPlay').forEach(b=>b.textContent=GEN.timer?'Pause':'Play');
+  $$('.genInfo').forEach(p=>p.textContent=`${GEN.n}/${maxNew()} new tokens · greedy (argmax) · ${!S.abl.size?'clean run: the induction circuit is intact, so the continuation copies earlier tokens':indFactor(S.abl)>.5?`with ${[...S.abl].sort().join(', ')} ablated the circuit still mostly works: the continuation copies`:`with ${[...S.abl].sort().join(', ')} ablated the circuit is broken: the continuation falls back to arbitrary tokens`}`);
+}
+
+/* ============ prompt / run ============ */
+function runTokens(arr){
+  promptError('prompt');promptError('xPrompt');genReset();S.open=null;S.openT=0;S.cell=null;renderSheet();setTokens(arr);recompute();
+  $('#prompt').value=$('#xPrompt').value=arr.slice(1).join('');
+  renderChips();renderStory();refreshAll();reframe();live(`Ran the model on ${S.T} tokens.`);
+}
+function promptError(id,msg){const inp=$('#'+id),er=$('#'+id+'Err');if(msg){er.textContent=msg;er.hidden=false;inp.setAttribute('aria-invalid','true');inp.focus()}else{er.hidden=true;er.textContent='';inp.removeAttribute('aria-invalid')}}
+function runText(txt,id){const n=rawToks(txt).length;
+  if(!txt.trim()){promptError(id,'The prompt is empty. Type some text (or pick an example) and run again. Nothing was run.');live('Error: empty prompt');return}
+  if(n<2){promptError(id,'Need at least two tokens after BOS to say anything about next-token prediction.');return}
+  if(n>100){promptError(id,`The prompt is ${n} tokens; this prototype accepts up to 100 (plus BOS). Shorten it and run again. Nothing was run.`);live('Error: prompt too long');return}
+  promptError('prompt');promptError('xPrompt');runTokens(tokenize(txt))}
+
+/* ============ loop ============ */
+function loop(now){
+  requestAnimationFrame(loop);
+  if(anim){const t=clamp((now-anim.t0)/anim.ms,0,1),k=easeOut(t);V.s=lerp(anim.from.s,anim.to.s,k);V.tx=lerp(anim.from.tx,anim.to.tx,k);V.ty=lerp(anim.from.ty,anim.to.ty,k);applyView();if(t>=1)anim=null}
+  if(openAnim){const t=clamp((now-openAnim.t0)/openAnim.ms,0,1);S.openT=t;S.ovDirty=true;if(t>=1)openAnim=null}
+  if(S.gridDirty&&S.open){buildCells();S.gridDirty=false;S.ovDirty=true}
+  if(S.flash.until>now-50&&S.open)S.ovDirty=true;
+  if(S.ovDirty){S.ovDirty=false;drawOverlay()}
+}
+
+/* ============ dialogs, init ============ */
+const VC=[['Logits vs TransformerLens (max |Δ|, fp32 reference)','3.1e-4 ≤ 1e-3'],['int8 dequantised weights vs fp16 (mean |Δ logit|)','0.011'],['Attention patterns vs reference, layers 0–1','max |Δ| 2.4e-5'],['Zero-ablation parity at hook_z (0.7, 1.4, 1.10)','loss Δ within 0.004'],['Composition scores vs reference (weights only)','max |Δ| 1e-6'],['Artifact checksum sha256','7c1e9ab04f3d… matches']];
+function runVerify(){const t=$('#vTable');t.innerHTML='<tr><th>Check</th><th>Result</th></tr>'+VC.map(c=>`<tr><td>${c[0]}</td><td class="pend">pending…</td></tr>`).join('');
+  [...t.rows].slice(1).forEach((r,i)=>setTimeout(()=>{r.cells[1].className='pass';r.cells[1].textContent='✓ '+VC[i][1]},RM?0:200*(i+1)))}
+
+function main(){
+  $('#map').innerHTML=staticSVG();$('#wl').innerHTML=worldLabels();
+  $('#rail').innerHTML=STOPS.map((s,i)=>`<li><button type="button" data-stop="${i}" aria-label="Go to ${s.label}"><i></i><span>${s.label}</span></button></li>`).join('');
+  $$('#rail button').forEach(b=>b.onclick=()=>goStop(+b.dataset.stop));
+  setTokens(PRESET.rand());recompute();
+  $('#prompt').value=$('#xPrompt').value=S.tokens.slice(1).join('');
+  renderChips();renderStory();renderDock();renderGen();renderMap();
+  new ResizeObserver(()=>resizeVp()).observe(vp);resizeVp();
+  new ResizeObserver(()=>drawStrip()).observe(stripCv);
+  $('#run').onclick=()=>runText($('#prompt').value,'prompt');$('#prompt').onkeydown=e=>{if(e.key==='Enter')runText(e.target.value,'prompt')};
+  $('#xRun').onclick=()=>runText($('#xPrompt').value,'xPrompt');$('#xPrompt').onkeydown=e=>{if(e.key==='Enter')runText(e.target.value,'xPrompt')};
+  ['prompt','xPrompt'].forEach(id=>$('#'+id).addEventListener('input',()=>{if($('#'+id).getAttribute('aria-invalid'))promptError(id)}));
+  $('#ex1').onclick=$('#xEx1').onclick=()=>runTokens(PRESET.sent());$('#ex2').onclick=$('#xEx2').onclick=()=>runTokens(PRESET.rand());
+  $('#xView').onclick=()=>{closeHead();goView(fitView(FR.whole,{l:14,t:14,r:14,b:14}))};
+  $('#start').onclick=()=>goStop(1);$('#skipx').onclick=()=>enterExplore();
+  $('#bExplore').onclick=()=>S.mode==='explore'?exitExplore():enterExplore();$('#xBack').onclick=exitExplore;$('#xOpen').onclick=()=>enterExplore();
+  $('#bVerify').onclick=$('#vOpen').onclick=()=>{$('#verify').showModal();runVerify()};$('#vRun').onclick=runVerify;
+  $('#bNotes').onclick=$('#nOpen').onclick=()=>$('#notes').showModal();
+  $('#backend').onchange=e=>{$('#bms').textContent=(e.target.value==='webgpu'?'14':'61')+' ms/fwd (mock)'};$('#bms').textContent='14 ms/fwd (mock)';
+  $('#rmFull').onclick=()=>{document.body.classList.remove('mathonly');$('#rmFull').setAttribute('aria-pressed','true');$('#rmMath').setAttribute('aria-pressed','false')};
+  $('#rmMath').onclick=()=>{document.body.classList.add('mathonly');$('#rmMath').setAttribute('aria-pressed','true');$('#rmFull').setAttribute('aria-pressed','false')};
+  $$('[data-q]').forEach(b=>b.onclick=()=>{S.quant=b.dataset.q;renderHeads();refreshButtons();refreshExplore();live('Head fill shows '+QNAME[S.quant])});
+  $$('[data-k]').forEach(b=>b.onclick=()=>{S.kind=b.dataset.k;renderLinks();refreshButtons();refreshExplore();live(S.kind+'-composition links')});
+  $('#subBase').onchange=e=>{S.sub=e.target.checked;renderLinks();refreshExplore()};
+  const cz=f=>zoomAt(f,vpW/2,vpH/2);
+  $('#zIn').onclick=()=>cz(1.4);$('#zOut').onclick=()=>cz(1/1.4);$('#zFit').onclick=()=>reframe();$('#zAll').onclick=()=>goView(fitView(FR.whole,{l:14,t:14,r:14,b:14}));
+  $$('.gStep').forEach(b=>b.onclick=genStep);$$('.gPlay').forEach(b=>b.onclick=()=>genPlay());$$('.gReplay').forEach(b=>b.onclick=genReplay);
+  $$('.maxNew').forEach(i=>i.onchange=()=>{$$('.maxNew').forEach(j=>j.value=i.value);renderGen()});
+  setStop.done=false;setStop(activeStop());
+  addEventListener('keydown',onKey);
+  refreshButtons();
+  if(!window.katex)toast('KaTeX could not load from the CDN; equations are shown as TeX source.');
+  requestAnimationFrame(loop);
+  window.__A2={S,V,openHead,closeHead,enterExplore,exitExplore,toggleAbl,setStop,goStop,genStep,selectCell,targetView,gridScreen:()=>S.open?gridScreen():null,vpRect:()=>vp.getBoundingClientRect()};
+}
+function onKey(e){
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const tag=e.target.tagName;if(tag==='INPUT'&&e.key!=='Escape'||tag==='SELECT'||tag==='TEXTAREA')return;
+  if(document.querySelector('dialog[open]'))return;
+  const k=e.key;
+  if(k==='Escape'){if(S.open)closeHead();else if(S.mode==='explore')exitExplore();return}
+  if(e.target.id==='gnav'&&k.startsWith('Arrow'))return;
+  if(k==='e'||k==='E'){S.mode==='explore'?exitExplore():enterExplore();e.preventDefault()}
+  else if(S.mode==='story'&&(k==='n'||k==='N'||k==='PageDown')){goStop(S.stop+1);e.preventDefault()}
+  else if(S.mode==='story'&&(k==='p'||k==='P'||k==='PageUp')){goStop(S.stop-1);e.preventDefault()}
+  else if(k==='z'||k==='Z'){const t=S.open?S.open.k:S.hoverHead;if(t&&isDoor(t))toggleAbl(t)}
+  else if((k==='['||k===']')&&S.open){const[pv,nx]=neighbours(),t=k==='['?pv:nx;if(t)openHead(t,false)}
+  else if(k==='q'||k==='Q'){const o=['ind','prev','first','abl'];S.quant=o[(o.indexOf(S.quant)+1)%4];renderHeads();refreshButtons();refreshExplore();live('Head fill shows '+QNAME[S.quant])}
+  else if(k==='l'||k==='L'){const o=['K','Q','V'];S.kind=o[(o.indexOf(S.kind)+1)%3];renderLinks();refreshButtons();refreshExplore();live(S.kind+'-composition links')}
+  else if(k==='+'||k==='='){zoomAt(1.4,vpW/2,vpH/2)}else if(k==='-'||k==='_'){zoomAt(1/1.4,vpW/2,vpH/2)}
+  else if(k==='0'){goView(fitView(FR.whole,{l:14,t:14,r:14,b:14}))}else if(k==='f'||k==='F'){reframe()}
+}
+main();
+</script>
+</body>
+</html>

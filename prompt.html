@@ -89,21 +89,23 @@
   <body>
     <h1>One-shot prompt: browser-native 2-layer induction transformer visualizer</h1>
     <p class="goal">
-      Build a complete, polished, interactive static web app that runs a two-layer attention-only toy transformer entirely in the browser with WebGPU, with a WebAssembly fallback, and provides TransformerLens/CircuitsVis-style interpretability visualizations of its induction circuit, reproducing the analyses of ARENA chapter 1.2 (“Intro to Mech Interp”). There is no backend, no inference API, and no runtime model hub, and no user data is sent anywhere. The app is deployed as a static site on Cloudflare Pages.
+      Build a complete, polished, interactive static web app that runs a two-layer attention-only toy transformer entirely in the browser with WebGPU, with a WebAssembly fallback, and provides TransformerLens/CircuitsVis-style interpretability visualizations of its induction circuit, reproducing the analyses of ARENA chapter 1.2 (“Intro to Mech Interp”). There is no backend, no inference API, and no runtime model hub, and no user data is sent anywhere. The app is a teaching aid for students working through the ARENA material. It is deployed as a private static site on Cloudflare Pages and shared only with those students.
     </p>
 
     <h2>Resolved decisions</h2>
     <p>These choices are final. Do not revisit them; implement them.</p>
     <table>
-      <tr><th>Hosting</th><td>Static Vite build served over HTTP(S): <code>vite preview</code> locally and Cloudflare Pages in production. Opening the build from <code>file://</code> is <em>not</em> a goal, because module scripts and <code>fetch</code> fail there. After the first load the app works offline through a service worker.</td></tr>
-      <tr><th>Pretrained weights</th><td><strong>Bring your own.</strong> The checkpoint has no declared license, so the deployed site must not contain or rehost pretrained weights. Users either run the local conversion script or import the <code>.pth</code> into the app; it is cached locally in IndexedDB or Cache Storage. Until weights are imported, the app runs a clearly labelled synthetic model with a planted induction circuit.</td></tr>
+      <tr><th>Hosting</th><td>Static Vite build served over HTTP(S): <code>vite preview</code> locally and Cloudflare Pages in production. Opening the build from <code>file://</code> is <em>not</em> a goal, because module scripts and <code>fetch</code> fail there. After the first load the app, including its weights, works offline through a service worker.</td></tr>
+      <tr><th>Access</th><td><strong>Private.</strong> The site is for a closed group of students, not the public. The production deployment sits behind Cloudflare Access with an allow-list of student emails, and every response carries <code>X-Robots-Tag: noindex</code>. The GitHub repository is public, so weights and fixtures are never committed.</td></tr>
+      <tr><th>Pretrained weights</th><td><strong>Bundled at build time by the developer.</strong> The developer runs <code>scripts/convert.py</code> locally, and the build copies the int8 artifact into <code>dist/</code>. The checkpoint has no declared license, which is why the deployment must stay private. Students cannot import, swap, or modify the weights or the tokenizer.</td></tr>
       <tr><th>Weight format</th><td>W_E and W_U stored as int8 with symmetric per-token FP16 scales. Everything else stored as FP16. All compute is f32. A full-precision FP16 artifact also exists, used for reference and testing.</td></tr>
       <tr><th>Parity</th><td>Two tiers. (1) The FP16 artifact must match TransformerLens tightly. (2) The drift of the int8 artifact from FP16 is bounded and reported.</td></tr>
       <tr><th>Tokenizer</th><td>Full free-text BPE, exactly matching <code>EleutherAI/gpt-neox-20b</code>.</td></tr>
-      <tr><th>Generation</th><td>Included: simple autoregressive sampling (greedy, temperature, top-k) with step-by-step replay.</td></tr>
+      <tr><th>Generation</th><td>Included: greedy decoding only (argmax, with no temperature or top-k), with step-by-step replay. It is deterministic, so no sampling PRNG is needed.</td></tr>
       <tr><th>Ablation</th><td>Zero ablation only.</td></tr>
       <tr><th>Activation explorer</th><td>Lists every hook, but tensors are materialized lazily.</td></tr>
-      <tr><th>Audience</th><td>ARENA-level learners: plain-English explanations alongside the exact math and tensor shapes.</td></tr>
+      <tr><th>Audience</th><td>Students at ARENA level: plain-English explanations alongside the exact math and tensor shapes.</td></tr>
+      <tr><th>User controls</th><td>The model and tokenizer are fixed. Students control prompts, generation, head selection, ablation, the backend choice, and the visualizations. They have no weight or tokenizer settings.</td></tr>
     </table>
 
     <h2>Role and deliverable</h2>
@@ -168,11 +170,11 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
     <p>Caching, hooks, ablation, and every analysis must work identically on all executors.</p>
 
     <h2>Model data and provenance</h2>
-    <p>Upstream checkpoint facts. Embed these in the code and show them in a Provenance panel:</p>
+    <p>Upstream checkpoint facts. Embed these in <code>convert.py</code> (for verification) and document them in the README:</p>
     <table>
       <tr><th>Repo</th><td><code>callummcdougall/attn_only_2L_half</code>, commit <code>3a3d92c6d6491233925c2649582128538a16843a</code></td></tr>
       <tr><th>File</th><td><code>attn_only_2L_half.pth</code>, 183,933,661 bytes, SHA-256 <code>7c8ccf06cc7d1a8c4820285d32fafd74f3b553c9af1b6765a1fbad094070578f</code>. Appears to be FP16.</td></tr>
-      <tr><th>License</th><td>None declared on the repo, and none on the ARENA materials repo. Show “No license declared — weights are not redistributed by this app.”</td></tr>
+      <tr><th>License</th><td>None declared on the repo, and none on the ARENA materials repo. The weights are therefore served only from the private, access-controlled deployment. The README records this and the reason for it.</td></tr>
       <tr><th>Parameters</th><td>83,574,886: W_E and W_U each 38,613,504; W_pos 1,572,864; 2,362,368 per attention layer, including biases; b_U 50,278. Buffers (<code>mask</code>, <code>IGNORE</code>) are dropped and rebuilt on the client.</td></tr>
     </table>
     <p><strong>Artifact format.</strong> A <code>manifest.json</code> containing:</p>
@@ -180,11 +182,14 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
       <li>format version and upstream SHA-256;</li>
       <li>for each tensor: name, shape, dtype, quantization, and the shard plus byte range;</li>
       <li>for each shard: size and SHA-256;</li>
+      <li>the maximum absolute value of each bias tensor;</li>
+      <li>the int8-vs-fp16 drift report (tier-2 metrics), computed by <code>convert.py</code>;</li>
+      <li>the versions of <code>convert.py</code>, <code>torch</code>, and <code>transformer-lens</code> used;</li>
       <li>the artifact checksum, defined as the SHA-256 of the canonical manifest.</li>
     </ul>
-    <p>Tensor data lives in content-hashed binary shards of at most 20 MiB, little-endian. The 20 MiB cap keeps the artifact deployable under Cloudflare's 25 MiB per-file limit if the license question is ever resolved. Two variants:</p>
+    <p>Tensor data lives in content-hashed binary shards of at most 20 MiB, little-endian. The 20 MiB cap keeps each shard under Cloudflare Pages' 25 MiB per-file limit. Two variants:</p>
     <ul>
-      <li><code>int8</code> (default, about 90 MB):
+      <li><code>int8</code> (deployed, about 90 MB):
         <ul>
           <li>W_E is quantized per row (per token).</li>
           <li>W_U is quantized per column (per output token).</li>
@@ -192,41 +197,33 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
           <li>All other tensors are FP16.</li>
         </ul>
       </li>
-      <li><code>fp16</code> (reference, about 167 MB): every tensor in FP16, bit-identical to the checkpoint.</li>
+      <li><code>fp16</code> (reference, about 167 MB): every tensor in FP16, bit-identical to the checkpoint. Used locally for parity tests and never deployed.</li>
     </ul>
-    <p><strong>Two ways to get weights:</strong></p>
+    <p><strong>Developer workflow:</strong></p>
     <ol>
-      <li><code>scripts/convert.py</code>:
+      <li><code>scripts/convert.py</code>, run once by the developer:
         <ul>
           <li>Pinned to <code>torch</code> and <code>transformer-lens==2.17.*</code>; document any version it cannot run with.</li>
           <li>Downloads the checkpoint once and verifies its SHA-256.</li>
-          <li>Writes both artifact variants to a gitignored <code>weights/</code> directory.</li>
+          <li>Quantizes the weights and writes both artifact variants to a gitignored <code>weights/</code> directory.</li>
           <li>Writes reference fixtures (see Testing).</li>
         </ul>
-        In development, <code>vite</code> serves <code>weights/</code> locally. The production build must exclude it, and a build check must fail if any weight shard ends up in <code>dist/</code>.
       </li>
-      <li>In-app import:
-        <ul>
-          <li>The user drag-drops, or picks with a file picker, either a converted artifact folder or zip, or the raw <code>.pth</code>.</li>
-          <li><code>.pth</code> files are parsed in a Web Worker with a restricted unpickler. It reads the zip, then the pickle, and allow-lists only the opcodes and globals needed to rebuild tensors (<code>torch._utils._rebuild_tensor_v2</code>, storage types, <code>collections.OrderedDict</code>). It rejects everything else with a clear error.</li>
-          <li>The file is verified against the known SHA-256, quantized in the worker, and stored in IndexedDB or Cache Storage keyed by artifact checksum.</li>
-          <li>Call <code>navigator.storage.persist()</code>. Show storage usage and a “forget weights” button.</li>
-          <li>Nothing leaves the device.</li>
-        </ul>
-      </li>
+      <li>Build: <code>vite</code> serves <code>weights/int8/</code> in development. <code>npm run build</code> copies the int8 manifest and shards into <code>dist/weights/</code>. A build check verifies every shard's SHA-256 against the manifest. The build fails if <code>weights/</code> is missing, a checksum mismatches, or any fp16 shard or <code>.pth</code> reaches <code>dist/</code>.</li>
     </ol>
-    <p><strong>Synthetic demo model.</strong> This is the default until weights are imported.</p>
+    <p>At runtime, the app fetches the manifest and shards same-origin, verifies each shard's SHA-256 before use, and loads them into the worker. There is no import UI, and students cannot replace the weights.</p>
+    <p><strong>Synthetic model (development and tests only).</strong></p>
     <ul>
-      <li>It is generated deterministically in the browser from a fixed seed, so no download is needed.</li>
+      <li>It is generated deterministically from a fixed seed. It lets tests and contributors without the checkpoint exercise every code path. It is never deployed.</li>
       <li>It has the exact architecture and is hand-constructed with a planted circuit: L0 head 7 is a previous-token head via a positional QK circuit, and L1 heads 4 and 10 are induction heads that K-compose with 0.7 and have a copying OV circuit. Every analysis therefore shows meaningful structure.</li>
-      <li>A persistent banner labels it “Synthetic — not pretrained”. Never present its numbers as the pretrained model's.</li>
+      <li>It is selected only through a dev-server flag, or a separate test build mode (<code>npm run build:test</code>) used by CI. The test build needs no <code>weights/</code> and is never deployed. When the synthetic model is active, a persistent banner labels it “Synthetic — not pretrained”.</li>
       <li>The README explains how the circuit was planted.</li>
     </ul>
     <p>Never fetch model data from Hugging Face, GitHub, or any other remote at runtime.</p>
 
     <h2>Tokenizer</h2>
     <ul>
-      <li>Use <code>@huggingface/tokenizers</code> with <code>tokenizer.json</code> and <code>tokenizer_config.json</code> from <code>EleutherAI/gpt-neox-20b</code> (Apache-2.0, about 2.1 MB raw, about 593 KB gzipped). They are vendored as static assets with attribution and are not imported into the JS bundle.</li>
+      <li>Use <code>@huggingface/tokenizers</code> with <code>tokenizer.json</code> and <code>tokenizer_config.json</code> from <code>EleutherAI/gpt-neox-20b</code> (Apache-2.0, about 2.1 MB raw, about 593 KB gzipped). They are pinned to a specific Hugging Face revision, with each file's SHA-256 recorded and checked in a test. They are vendored as static assets with attribution and are not imported into the JS bundle.</li>
       <li>Encode without post-processor special tokens, then prepend BOS id 0 when “prepend BOS” is on (the default), matching TransformerLens <code>to_tokens</code>.</li>
       <li>Handle these correctly:
         <ul>
@@ -261,11 +258,12 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
       <li><strong>Deployment headers</strong> (<code>public/_headers</code>):
         <ul>
           <li>CSP: <code>default-src 'self'; connect-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; img-src 'self' data: blob:; style-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'</code></li>
-          <li><code>Cache-Control: public, max-age=31536000, immutable</code> for hashed assets.</li>
+          <li><code>X-Robots-Tag: noindex, nofollow</code> on every path.</li>
+          <li><code>Cache-Control: private, max-age=31536000, immutable</code> for hashed assets and weight shards. Use <code>private</code> because the site sits behind Cloudflare Access.</li>
           <li>A short cache lifetime for <code>index.html</code> and the service worker.</li>
         </ul>
       </li>
-      <li><strong>Service worker:</strong> caches the app shell, the WASM, and the tokenizer for offline use. It never caches or intercepts imported weights, which live in IndexedDB or Cache Storage under the app's control. Base progress bars on the byte sizes in the manifest, not on <code>Content-Length</code>.</li>
+      <li><strong>Service worker:</strong> caches the app shell, the WASM, the tokenizer, and the weight shards for offline use. Shards are content-hashed, so they are cached once and never revalidated. Call <code>navigator.storage.persist()</code> so the roughly 90 MB of weights is not evicted. On first load, show a weights download progress bar based on the byte sizes in the manifest, not on <code>Content-Length</code>.</li>
     </ul>
 
     <h2>Interactions and UI</h2>
@@ -273,10 +271,9 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
     <ul>
       <li><strong>Model status bar:</strong>
         <ul>
-          <li>model mode (Synthetic / Pretrained int8 / Pretrained fp16);</li>
+          <li>the model name (<code>attn_only_2L_half</code>, int8);</li>
           <li>active backend;</li>
-          <li>artifact checksum (short form, with a copy button);</li>
-          <li>an import-weights entry point.</li>
+          <li>artifact checksum (short form, with a copy button).</li>
         </ul>
       </li>
       <li><strong>Prompt controls:</strong>
@@ -291,8 +288,8 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
       </li>
       <li><strong>Generation:</strong>
         <ul>
-          <li>Greedy, temperature, and top-k sampling, with a seeded PRNG.</li>
-          <li>A max-new-tokens setting.</li>
+          <li>Greedy decoding only. The next token is the argmax of the last position's logits, with ties broken by the lowest token ID. There are no temperature, top-k, or seed controls. Only the final position's logit row is computed.</li>
+          <li>A max-new-tokens setting (default 20) is the only generation parameter. Generation stops early at <code>n_ctx</code>.</li>
           <li>Step, play, pause, and replay controls that animate how attention patterns grow as tokens are appended.</li>
           <li>Every step's cache can be inspected.</li>
           <li>Generation reuses the KV cache, or recomputes for short sequences, which is acceptable.</li>
@@ -346,7 +343,7 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
       <li><strong>Timeline and run stats:</strong>
         <ul>
           <li>Total runtime, broken down into tokenize, forward/prefill, cache build, and analysis.</li>
-          <li>Sequence length, backend, and model mode.</li>
+          <li>Sequence length and backend.</li>
           <li>Memory:
             <ul>
               <li>GPU buffer bytes, from a ledger that wraps <code>createBuffer</code> and <code>destroy</code>;</li>
@@ -356,15 +353,7 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
           </li>
         </ul>
       </li>
-      <li><strong>Provenance panel:</strong>
-        <ul>
-          <li>the upstream facts above;</li>
-          <li>parameter counts per tensor;</li>
-          <li>the quantization scheme and the int8-vs-fp16 drift report;</li>
-          <li>maximum absolute value of each bias;</li>
-          <li>the tokenizer source and license.</li>
-        </ul>
-      </li>
+      <li><strong>About footer:</strong> a short link to the model source (<code>callummcdougall/attn_only_2L_half</code>), the ARENA 1.2 material, and the tokenizer attribution with its Apache-2.0 license. Provenance details live in the README, not in the UI.</li>
     </ul>
 
     <h2>Interpretability analyses</h2>
@@ -480,9 +469,9 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
         <ul>
           <li>no WebGPU;</li>
           <li>device lost;</li>
-          <li>a weights checksum mismatch;</li>
-          <li>a rejected <code>.pth</code> (unsafe pickle);</li>
-          <li>quota exceeded;</li>
+          <li>weights that fail to download, with retry;</li>
+          <li>a weight shard checksum mismatch;</li>
+          <li>storage quota exceeded while caching weights for offline use, in which case the app still works online;</li>
           <li>a sequence that is too long;</li>
           <li>an empty prompt.</li>
         </ul>
@@ -495,22 +484,24 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
     <ul>
       <li>Vitest for unit and parity tests. They run in Node with the <code>webgpu</code> npm package (Dawn) so the same WGSL can execute there.</li>
       <li>Playwright with Chromium for end-to-end tests, run headless with <code>--enable-unsafe-webgpu --enable-features=Vulkan --use-vulkan=swiftshader --use-angle=swiftshader</code>.</li>
+      <li><strong>CI vs local:</strong> CI (on the public repo) never has access to weights or fixtures. It runs type-check, lint, unit tests, tokenizer tests, synthetic-model parity, and the Playwright suite against <code>npm run build:test</code>. The production build (<code>npm run build</code>), the real-weight tests, and deployment are local-only. Before each deploy, the developer runs <code>npm run verify:release</code>. This runs the full suite, including tier-1 and tier-2 parity and the e2e suite against the production build, followed by the build checks.</li>
       <li>Fallback tests stub <code>navigator.gpu</code> as <code>undefined</code>, and separately stub <code>requestAdapter()</code> to resolve to <code>null</code>.</li>
       <li>If WebGPU cannot run in the environment, the WASM and reference paths must still be fully tested, and the report must say so.</li>
     </ul>
-    <p>There is also an in-app <strong>Verify</strong> panel that runs the same checks in the user's browser on the active backend.</p>
+    <p>There is also an in-app <strong>Verify</strong> panel. It runs the backend parity checks in the student's browser on the active backend, and displays the build-time drift report and bias maxima from the manifest. The fp16 artifact is not deployed, so tier-2 parity cannot be rerun in the browser.</p>
     <ul>
       <li><strong>Backend parity:</strong> WebGPU vs WASM vs the TS reference, using fixture tensors at sequence lengths 1, 8, 101, and 512.
         <ul>
           <li>Per-kernel tolerance: <code>rtol = 1e-4</code>, <code>atol = 1e-5</code>.</li>
           <li>Logits after the full model: <code>atol = 1e-3</code>, <code>rtol = 1e-3</code>, with identical top-5 sets.</li>
+          <li>Greedy generation yields identical token sequences on all executors. The only allowed difference is at a step where the top-2 logit margin is below the logits tolerance.</li>
         </ul>
       </li>
       <li><strong>Model parity, tier 1 (FP16 artifact vs TransformerLens):</strong>
         <ul>
           <li><code>convert.py</code> writes fixtures from TransformerLens: tokens, which include ARENA's exact repeated-token batch because PyTorch's RNG cannot be reproduced in the browser; selected activations (patterns, z, result, resid_post); logit slices; and analysis outputs (detector scores, induction scores, DLA, ablation scores, composition grids).</li>
           <li>Required tolerances: patterns <code>atol = 1e-4</code>, logits <code>atol = 1e-3</code>, DLA sum identity <code>atol = 1e-3</code>.</li>
-          <li>The fixtures are small, gitignored, and live with the weights. CI runs tier 1 only when they are present, and the synthetic-model fixtures always run.</li>
+          <li>The fixtures are small, gitignored, and live with the weights. Tier 1 runs locally in <code>verify:release</code> and is skipped with a visible notice when the fixtures are absent, as in CI. The synthetic-model fixtures always run.</li>
         </ul>
       </li>
       <li><strong>Model parity, tier 2 (int8 vs FP16):</strong> report and assert:
@@ -532,18 +523,18 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
           <li>top-k circuit accuracy.</li>
         </ul>
       </li>
-      <li><strong>Importer:</strong>
+      <li><strong>Weights loading and build:</strong>
         <ul>
-          <li>The restricted unpickler loads a small fixture <code>.pth</code> generated by <code>convert.py</code>.</li>
-          <li>It rejects a malicious pickle that uses <code>os.system</code> or <code>builtins.eval</code> as globals.</li>
-          <li>A checksum mismatch is rejected.</li>
+          <li>The loader verifies each shard's SHA-256, and rejects a corrupted shard with the failure state above.</li>
+          <li>The build fails when <code>weights/</code> is missing or a shard checksum mismatches.</li>
+          <li>The vendored tokenizer files match their recorded SHA-256 values.</li>
         </ul>
       </li>
       <li><strong>Privacy:</strong>
         <ul>
-          <li>The Playwright suite records all network requests during a full session (load, import, run, generate, export) and asserts that every one is same-origin and that none occurs after import other than static assets.</li>
-          <li>A test asserts that the CSP header is present in <code>_headers</code>.</li>
-          <li>A build check asserts that <code>dist/</code> contains no weight shards.</li>
+          <li>The Playwright suite records all network requests during a full session (load, run, generate, export). It asserts that every one is same-origin, and that only static assets and weight shards are requested.</li>
+          <li>A test asserts that the CSP and <code>X-Robots-Tag</code> headers are present in <code>_headers</code>.</li>
+          <li>A build check asserts that <code>dist/</code> contains exactly the int8 shards listed in the manifest, with no fp16 shards, <code>.pth</code>, or fixtures.</li>
         </ul>
       </li>
       <li><strong>Interaction tests:</strong>
@@ -564,8 +555,12 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
     <p>Document in <code>README.md</code>:</p>
     <ul>
       <li>setup, conversion, build, development, test, and Cloudflare Pages deploy commands (<code>wrangler pages deploy dist</code>);</li>
+      <li>the release process: what CI covers, what it cannot cover, and the local <code>verify:release</code> step required before every deploy;</li>
+      <li>how to put the deployment behind Cloudflare Access and add students to its allow-list. Production and preview deployments must both be covered;</li>
       <li>WebGPU and WebAssembly browser support and the expected fallback behavior. WebGPU is available in Chrome/Edge 113+, Safari 26, and Firefox 141+ on Windows and 145+ on Apple Silicon. Linux and Android vary; everything else falls back to WASM;</li>
-      <li>model provenance, the license situation and why weights are bring-your-own, the artifact format, the quantization scheme, the conversion steps, and the expected checksums;</li>
+      <li>model provenance: the upstream facts above, parameter counts per tensor, the bias maxima, and the drift report;</li>
+      <li>the license situation and why the deployment must stay private;</li>
+      <li>the artifact format, the quantization scheme, the conversion steps, and the expected checksums;</li>
       <li>the exact forward-pass semantics, including shortformer;</li>
       <li>the interpretability methods, formulas, thresholds, and limitations, including int8 effects and the biases excluded from DLA;</li>
       <li>the induction-circuit narrative and the ARENA exercise identities the app reproduces;</li>
@@ -575,7 +570,7 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
     <ul>
       <li><code>src/backends/{webgpu,wasm,reference}</code></li>
       <li><code>src/model</code> (op graph, hooks, cache)</li>
-      <li><code>src/weights</code> (manifest, importer, unpickler, quantization, storage)</li>
+      <li><code>src/weights</code> (manifest, loader, checksum verification, dequantization)</li>
       <li><code>src/tokenizer</code></li>
       <li><code>src/analysis</code></li>
       <li><code>src/viz</code></li>
@@ -588,10 +583,11 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
 
     <h2>Acceptance criteria</h2>
     <ol>
-      <li><code>npm ci &amp;&amp; npm run build</code> produces a static <code>dist/</code> that runs under <code>vite preview</code> and deploys to Cloudflare Pages unchanged. <code>dist/</code> contains no weight shards, and every file is under 25 MiB.</li>
-      <li>On first load with no weights, the synthetic model runs end to end on WebGPU or WASM, and the “Synthetic — not pretrained” banner is visible on every view.</li>
-      <li>Importing <code>attn_only_2L_half.pth</code> or a converted artifact verifies the SHA-256 and runs fully offline. After a reload with the network disabled, the cached weights load and the app works.</li>
-      <li>With pretrained weights on repeated random tokens (<code>seq_len</code> = 50, batch 10):
+      <li>With <code>weights/</code> present, <code>npm ci &amp;&amp; npm run build</code> produces a static <code>dist/</code> that runs under <code>vite preview</code> and deploys to Cloudflare Pages unchanged. <code>dist/</code> contains the verified int8 artifact and nothing from the fp16 variant, and every file is under 25 MiB. Without <code>weights/</code>, the build fails with a clear message.</li>
+      <li>On first load, the pretrained int8 weights download with a progress bar, pass checksum verification, and run end to end on WebGPU or WASM. No synthetic banner or synthetic code path is reachable in production.</li>
+      <li>CI passes on a fresh clone with no <code>weights/</code>, running the e2e suite against <code>npm run build:test</code>. <code>npm run verify:release</code> passes locally with the real weights.</li>
+      <li>After a reload with the network disabled, the cached app and weights load from the service worker and the app works fully offline.</li>
+      <li>On repeated random tokens (<code>seq_len</code> = 50, batch 10):
         <ul>
           <li>heads 1.4 and 1.10 are classified as induction heads (score &gt; 0.6), with 1.10 above 1.4;</li>
           <li>head 0.7 is classified as a previous-token head;</li>
@@ -603,7 +599,7 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
       <li>Zero-ablating 0.7 at <code>hook_v</code> drops 1.4's induction score from about 0.68 to near 0. The ablate-each-head sweep ranks 0.7, 1.4, and 1.10 as the most harmful to ablate.</li>
       <li>The DLA components sum to the correct-token logit (excluding biases) within <code>atol = 1e-3</code> at every position.</li>
       <li>Tier-1 and tier-2 parity, backend parity, and tokenizer fixtures all pass at the tolerances stated above.</li>
-      <li>The privacy test records zero cross-origin requests across a full session, and the CSP is deployed.</li>
+      <li>The privacy test records zero cross-origin requests across a full session, and the CSP and <code>noindex</code> headers are deployed.</li>
       <li>Forcing WASM (by stubbing WebGPU) yields identical classifications and analyses, and the UI shows “WASM”.</li>
       <li>Every visualization has an accessible text or table equivalent. The main workflow (enter prompt → run → select head → view detail → ablate) is completable by keyboard alone.</li>
       <li>The performance targets and bundle budget are met, or any miss is reported with measurements.</li>
@@ -614,6 +610,7 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
     <p>Before delivery, verify each acceptance criterion and explicitly report:</p>
     <ul>
       <li>the commands run (install, type-check, lint, unit, parity, e2e, build) and their actual pass/fail output, never a summary written from memory;</li>
+      <li>which results came from the CI configuration (synthetic test build) and which came from a local <code>verify:release</code> run against the real weights. If <code>verify:release</code> could not run because the weights were unavailable, say so explicitly;</li>
       <li>which backends were actually exercised in tests: real WebGPU, SwiftShader, Dawn-in-Node, or stubbed. If any acceptance criterion could not be checked on real WebGPU, say so;</li>
       <li>whether tier-1 parity ran against real TransformerLens fixtures, or only synthetic ones because the weights were unavailable in the build environment;</li>
       <li>the measured values for criteria 4–8: induction, previous-token, and loss numbers; composition top pairs; OV accuracies; ablation effects; and the DLA residual;</li>
@@ -621,7 +618,7 @@ logits = resid_post1 @ W_U + b_U  # [pos, 50278]</code></pre>
       <li>measured runtimes, bundle sizes, and the largest file in <code>dist/</code>;</li>
       <li>the privacy-test request log summary and the deployed headers;</li>
       <li>any deviation from this spec, the reason for it, and known limitations or follow-ups;</li>
-      <li>confirmation that no pretrained weights, tokens, or activations are bundled or transmitted, and that synthetic results are never labelled as pretrained.</li>
+      <li>confirmation of four things: only the int8 artifact is in <code>dist/</code>; no weights or fixtures are committed to the public repo; no tokens or activations are transmitted; and the synthetic model is unreachable in the production build.</li>
     </ul>
   </body>
 </html>
