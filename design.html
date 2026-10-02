@@ -284,7 +284,7 @@ td.pass{color:var(--ok)}td.pend{color:var(--grey)}
 
 <div id="stage">
   <div id="strip">
-    <div class="sh"><b>Tokens</b><span id="stripInfo"></span><span class="hint">hover: token and loss · click a second-half token to follow it</span></div>
+    <div class="sh"><b>Tokens</b><span id="stripInfo"></span><span class="hint">Hover a token to see its loss · Click a second-half token to follow it</span></div>
     <canvas id="stripCv" aria-label="Token strip. Coloured marks show the tokens the story follows."></canvas>
   </div>
   <div id="tools">
@@ -292,17 +292,17 @@ td.pass{color:var(--ok)}td.pend{color:var(--grey)}
       <button class="seg" data-q="ind" aria-pressed="true">induction</button><button class="seg" data-q="prev" aria-pressed="false">prev-token</button><button class="seg" data-q="first" aria-pressed="false">first-token</button><button class="seg" data-q="abl" aria-pressed="false">ablation Δloss</button></div>
     <div class="grp" role="group" aria-label="Composition links between layer 0 and layer 1"><span class="cap">Links</span>
       <button class="seg" data-k="K" aria-pressed="true">K</button><button class="seg" data-k="Q" aria-pressed="false">Q</button><button class="seg" data-k="V" aria-pressed="false">V</button>
-      <label title="Composition score minus the random-matrix baseline (0.05); links at or below baseline are hidden"><input type="checkbox" id="subBase" checked> subtract baseline</label></div>
+      <label title="Subtract the random-matrix baseline (0.05) from each composition score. The map hides links at or below the baseline."><input type="checkbox" id="subBase" checked> subtract baseline</label></div>
     <div class="grp zoom" role="group" aria-label="Map zoom"><button class="seg" id="zOut" type="button" aria-label="Zoom out">−</button><button class="seg" id="zIn" type="button" aria-label="Zoom in">+</button><button class="seg" id="zFit" type="button" title="Frame the current subject (F)">Fit</button><button class="seg" id="zAll" type="button" title="Whole model (0)">Whole</button></div>
   </div>
   <div id="mid">
-  <div id="vp" tabindex="0" role="application" aria-label="Model map. Arrow keys pan, plus and minus zoom, 0 shows the whole model, F fits the current subject. Tab moves between heads; Enter opens one. Text equivalents are in the story cards and the Explore tables." aria-describedby="vpHelp">
+  <div id="vp" tabindex="0" role="application" aria-label="Model map. Use the arrow keys to pan. Use plus and minus to zoom. Press 0 to show the whole model. Press F to fit the current subject. Press Tab to move between heads. Press Enter to open a head. The story cards and the Explore tables give text equivalents." aria-describedby="vpHelp">
     <div id="world"><svg id="map" width="1000" height="760" viewBox="0 0 1000 760" aria-hidden="true"></svg><div id="wl" aria-hidden="true"></div></div>
     <canvas id="gcv" aria-hidden="true"></canvas>
     <div id="tip" role="tooltip"></div>
     <div id="toast" role="status"></div>
-    <span class="sr" id="vpHelp">Drag to pan. Ctrl or Command plus scroll, or pinch, to zoom. Off the rail, plain scroll zooms.</span>
-    <div id="whint" hidden>Ctrl/⌘ + scroll (or pinch) to zoom · plain scroll reads the story</div>
+    <span class="sr" id="vpHelp">Drag to pan. To zoom, pinch or use Ctrl or Command with scroll. Off the rail, a plain scroll zooms the map.</span>
+    <div id="whint" hidden>To zoom, use Ctrl/⌘ + scroll or pinch · A plain scroll moves the story</div>
     <div id="rowEq" hidden aria-hidden="true"></div>
   </div>
   <section id="sheet" hidden aria-label="Open head detail"></section>
@@ -311,7 +311,7 @@ td.pass{color:var(--ok)}td.pend{color:var(--grey)}
     <div><h2>Zero-ablate (hook_z)</h2><div class="tg" id="ablTg"></div></div>
     <div><h2>Per-token loss <span id="lossLeg" style="font-weight:400"></span></h2><svg id="lossSvg" role="img" aria-label="Per-token loss chart" viewBox="0 0 300 40" preserveAspectRatio="none"></svg></div>
     <div class="delta" aria-live="polite"><h2>Mean loss, 2nd half</h2><span id="dl"></span></div>
-    <p id="ablNote" hidden>Composition links stay the same: they are computed from weights (W<sub>QK</sub>, W<sub>OV</sub>) only. Ablation changes activations: attention patterns downstream, induction scores, logits and loss.</p>
+    <p id="ablNote" hidden>Ablation does not change the composition links. The links use only the weights (W<sub>QK</sub>, W<sub>OV</sub>). Ablation changes the activations: the downstream attention patterns, the induction scores, the logits and the loss.</p>
   </div>
 </div>
 <div class="sr" id="live" aria-live="polite"></div>
@@ -320,8 +320,8 @@ td.pass{color:var(--ok)}td.pend{color:var(--grey)}
 <section class="stop" id="s0" aria-labelledby="h0"><div class="card">
   <p class="kick">An interactive walkthrough · ARENA 1.2</p>
   <h1 id="h0">How a two-layer transformer learns to repeat itself</h1>
-  <p class="lede plain">Scroll to follow the <em>induction circuit</em> through a 24-head model. At each stop the heads that matter glow: those are <b>doors</b>. Click one and its attention pattern opens right where it sits on the map.</p>
-  <label class="f" for="prompt"><b>Prompt</b> <span class="small">(BOS is prepended; mock tokenizer, up to 100 tokens)</span></label>
+  <p class="lede plain">Scroll to follow the <em>induction circuit</em> through a model with 24 heads. At each stop, the important heads glow. These heads are <b>doors</b>. Click a door to open its attention pattern at its position on the map.</p>
+  <label class="f" for="prompt"><b>Prompt</b> <span class="small">(The app adds BOS at the start. Mock tokenizer, maximum 100 tokens.)</span></label>
   <input class="prompt" id="prompt" type="text" autocomplete="off" spellcheck="false" aria-describedby="promptErr">
   <p class="perr" id="promptErr" role="alert" hidden></p>
   <div class="btns"><button class="btn" id="run" type="button">Run model</button>
@@ -330,7 +330,7 @@ td.pass{color:var(--ok)}td.pend{color:var(--grey)}
   <ul class="chips" id="chips" aria-label="Tokens; underline darkness = per-token loss"></ul>
   <p class="small" id="runInfo" role="status"></p>
   <div class="btns" style="margin-top:4px"><button class="btn" id="start" type="button">Start the story ↓</button>
-    <button class="btn ghost" id="skipx" type="button">Done the exercises? Step off the rail →</button></div>
+    <button class="btn ghost" id="skipx" type="button">Finished the exercises? Step off the rail →</button></div>
   <p class="small">Reading mode <span class="seg2" role="group" aria-label="Reading mode"><button id="rmFull" aria-pressed="true">Full explanations</button><button id="rmMath" aria-pressed="false">Math only</button></span></p>
   <p class="small">Keys: <kbd>N</kbd>/<kbd>P</kbd> next/previous stop · <kbd>E</kbd> step off the rail · <kbd>Esc</kbd> close grid / go back · on the map: drag to pan, <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + scroll or pinch to zoom, <kbd>+</kbd> <kbd>−</kbd> zoom, <kbd>0</kbd> whole model, <kbd>F</kbd> fit.</p>
 </div></section>
@@ -346,18 +346,18 @@ td.pass{color:var(--ok)}td.pend{color:var(--grey)}
   <div class="btns"><button class="btn gStep" type="button">Step</button><button class="btn gPlay" type="button">Play</button><button class="btn ghost gReplay" type="button">Replay</button></div>
   <ol class="genOut" aria-label="Generated tokens"></ol><p class="small genInfo"></p></div></div></section>
 <section class="stop" id="s9" aria-labelledby="h9x"><div class="card"><p class="kick">Appendix</p><h2 class="t" id="h9x">Verify, and where this came from</h2>
-  <p class="plain">The numbers on screen come from a model you can check. The Verify panel lists parity against TransformerLens, int8 drift and the artifact checksum.</p>
+  <p class="plain">You can check the model that gives the numbers on the screen. The Verify panel shows the parity with TransformerLens, the int8 drift and the artifact checksum.</p>
   <div class="btns"><button class="btn" id="vOpen" type="button">Open Verify</button><button class="btn ghost" id="nOpen" type="button">Read the design notes</button><button class="btn ghost" id="xOpen" type="button">Step off the rail</button></div>
   <footer class="about"><h3>About</h3>
-    <p>Model: TransformerLens <span class="mono">callummcdougall/attn_only_2L_half</span> — 2 layers, 12 heads each, d_model 768, d_head 64, no MLP, no LayerNorm, shortformer positions (they enter Q and K only). Material: ARENA 1.2 “Intro to Mech Interp”. Tokenizer: EleutherAI/gpt-neox-20b (Apache-2.0). Weights and tokenizer are fixed; you control the prompt, generation length, heads, ablations, backend and views.</p>
-    <p>Private course site. Everything runs in your browser; no tokens, text or activations leave the page. <b>This prototype uses deterministic mock activations</b> with planted induction structure, not real weights.</p></footer>
+    <p>Model: TransformerLens <span class="mono">callummcdougall/attn_only_2L_half</span> — 2 layers, 12 heads each, d_model 768, d_head 64, no MLP, no LayerNorm, shortformer positions (positions go into Q and K only). Material: ARENA 1.2 “Intro to Mech Interp”. Tokenizer: EleutherAI/gpt-neox-20b (Apache-2.0). The weights and the tokenizer are fixed. You control the prompt, the generation length, the heads, the ablations, the backend and the views.</p>
+    <p>Private course site. All computation runs in your browser. No tokens, text or activations leave the page. <b>This prototype uses deterministic mock activations</b> with a planted induction structure. It does not use real weights.</p></footer>
 </div></section>
 </main>
 
 <aside id="explore" aria-label="Free exploration" hidden>
   <button class="back" id="xBack" type="button">← Back to the story</button>
   <h2>Off the rail</h2>
-  <p class="small">Every head is clickable. Pan and zoom freely (here a plain scroll zooms the map). The story is paused where you left it; ablations and the prompt carry over.</p>
+  <p class="small">You can click all heads. Pan and zoom freely. In this mode, a plain scroll zooms the map. The story stays paused at your last stop. The ablations and the prompt do not change.</p>
   <h3>Prompt</h3>
   <input class="prompt" id="xPrompt" type="text" autocomplete="off" spellcheck="false" aria-label="Prompt" aria-describedby="xPromptErr">
   <p class="perr" id="xPromptErr" role="alert" hidden></p>
@@ -366,21 +366,21 @@ td.pass{color:var(--ok)}td.pend{color:var(--grey)}
   <div class="gen"><label class="f">max new tokens <input class="maxNew" type="number" min="1" max="40" value="20"></label>
   <span class="btns" style="display:inline-flex;margin:0 0 0 8px"><button class="btn sm gStep" type="button">Step</button><button class="btn sm gPlay" type="button">Play</button><button class="btn sm ghost gReplay" type="button">Replay</button></span>
   <ol class="genOut" aria-label="Generated tokens"></ol><p class="small genInfo"></p></div>
-  <h3>All 24 heads <span class="small">(text equivalent of the map; shaded column = quantity on the map)</span></h3>
+  <h3>All 24 heads <span class="small">(text equivalent of the map. The shaded column shows the quantity on the map.)</span></h3>
   <div class="tw" style="max-height:none"><table id="headT"></table></div>
   <h3>Composition scores (weights only)</h3>
-  <p class="small">Rows: layer-0 head whose W<sub>OV</sub> writes. Columns: layer-1 head that reads it. Darker = higher; outlined = 0.7 → 1.4 and 0.7 → 1.10. These never change with the prompt or with ablation.</p>
+  <p class="small">Rows: the layer-0 head that writes through its W<sub>OV</sub>. Columns: the layer-1 head that reads that output. A darker cell shows a higher score. Outlines mark 0.7 → 1.4 and 0.7 → 1.10. These scores do not change with the prompt or with ablation.</p>
   <div class="compP" id="compP"></div>
   <h3>Strongest <span id="kindName">K</span>-composition links</h3>
   <table id="linkT"></table>
   <details><summary>Table view: per-token loss</summary><div class="tw"><table id="lossT"></table></div></details>
   <h3>Keys</h3>
-  <p class="small"><kbd>E</kbd> / <kbd>Esc</kbd> back to the story · <kbd>Z</kbd> ablate the open head · <kbd>[</kbd> <kbd>]</kbd> previous / next head · <kbd>Q</kbd> cycle head fill · <kbd>L</kbd> cycle link type · map: arrows pan, <kbd>+</kbd>/<kbd>−</kbd> zoom, <kbd>0</kbd> whole, <kbd>F</kbd> fit · inside an open grid, focus the cell cursor and use arrows.</p>
+  <p class="small"><kbd>E</kbd> / <kbd>Esc</kbd> back to the story · <kbd>Z</kbd> ablate the open head · <kbd>[</kbd> <kbd>]</kbd> previous / next head · <kbd>Q</kbd> cycle head fill · <kbd>L</kbd> cycle link type · map: arrows pan, <kbd>+</kbd>/<kbd>−</kbd> zoom, <kbd>0</kbd> whole, <kbd>F</kbd> fit · in an open grid, put focus on the cell cursor and use the arrow keys.</p>
   <footer class="about"><h3>About</h3><p>attn_only_2L_half · int8 · private course site · everything runs in your browser · mock activations in this prototype.</p></footer>
 </aside>
 
 <dialog id="verify" aria-labelledby="vt"><div class="in">
-  <h2 id="vt">Verify</h2><p class="small">Mock results for this prototype. In the real app these run against bundled fixtures on the active backend.</p>
+  <h2 id="vt">Verify</h2><p class="small">These are mock results for this prototype. In the real app, these checks run against bundled fixtures on the active backend.</p>
   <table id="vTable"></table>
   <div class="btns"><button class="btn" id="vRun" type="button">Re-run checks</button><form method="dialog"><button class="btn ghost">Close</button></form></div>
 </div></dialog>
@@ -388,30 +388,30 @@ td.pass{color:var(--ok)}td.pend{color:var(--grey)}
 <dialog id="notes" aria-labelledby="nt"><div class="in">
   <div style="display:flex;justify-content:space-between;align-items:start"><h2 id="nt">Design notes — Variant A2, “Story with doors”, 2D map</h2><form method="dialog"><button class="btn ghost">Close</button></form></div>
   <h3>Concept</h3>
-  <p>The scroll story is the frame. Left: one card per stop (plain English, paper-notation math rendered with KaTeX, colour-coded shape badges). Right: a flat, zoomable <b>map of the model</b> drawn in the visual language of <i>A Mathematical Framework for Transformer Circuits</i>. Each stop frames the part of the model it discusses. Heads that matter for the current step glow as <b>doors</b>; clicking one opens its causally masked T×T attention pattern in place, and the map zooms so the whole grid and its axis labels fit. A panel beside the grid, inside the map column, holds exact values, the cell breakdown and TransformerLens equivalents.</p>
+  <p>The scroll story is the frame of the page. On the left, there is one card for each stop. Each card has plain English, math in the notation of the paper (rendered with KaTeX) and colour-coded shape badges. On the right, there is a flat <b>map of the model</b> that you can zoom. The map uses the visual language of <i>A Mathematical Framework for Transformer Circuits</i>. Each stop frames the part of the model that it discusses. The important heads for the current step glow as <b>doors</b>. A click on a door opens its causally masked T×T attention pattern in place. The map then zooms until the full grid and its axis labels fit. A panel next to the grid, in the map column, shows the exact values, the cell breakdown and the TransformerLens equivalents.</p>
   <h3>Story and exploration</h3>
   <ul>
-  <li><b>On the rail</b>: normal document scroll. A stop becomes active when its top passes 40% of the window height; <kbd>N</kbd>/<kbd>P</kbd>, PgUp/PgDn and the chapter rail jump between stops. Doors keep a first-time student off the 22 heads that do not matter yet.</li>
-  <li><b>Off the rail</b> (button, <kbd>E</kbd>, or “Done the exercises?”): an Explore panel replaces the story (prompt, generation, all-heads table, Q/K/V composition panels, link and loss tables). Every head is clickable. Prompt, ablations and the open grid carry over.</li>
+  <li><b>On the rail</b>: the document scrolls normally. A stop becomes active when its top edge goes above 40% of the window height. <kbd>N</kbd>/<kbd>P</kbd>, PgUp/PgDn and the chapter rail move between stops. Doors keep first-time students away from the 22 heads that are not important yet.</li>
+  <li><b>Off the rail</b> (the button, <kbd>E</kbd>, or “Finished the exercises?”): an Explore panel replaces the story. The panel contains the prompt, generation, the all-heads table, the Q/K/V composition panels, and the link and loss tables. You can click all heads. The prompt, the ablations and the open grid do not change.</li>
   <li><b>Back</b> returns to the same stop and scroll position.</li>
-  <li><b>Novice path</b>: read, open doors (each shows a “look for” hint), toggle ablation inline. <b>Expert path</b>: set the prompt, step off the rail, sort through the table, flip head fill, open heads with <kbd>[</kbd>/<kbd>]</kbd>, click cells for q·k, vectors and hook names. “Math only” trims the prose.</li></ul>
+  <li><b>Novice path</b>: read the story, open doors (each door shows a “look for” hint) and turn ablation on or off in the card. <b>Expert path</b>: set the prompt, step off the rail, sort the table, change the head fill, open heads with <kbd>[</kbd>/<kbd>]</kbd> and click cells to see q·k, vectors and hook names. “Math only” removes most of the prose.</li></ul>
   <h3>Map mapping</h3>
-  <ul><li><b>Vertical = depth</b>, bottom to top as in the paper: grey <i>tokens</i> → tan <i>embed</i> → residual stream (grey line with arrowheads) → layer 0 heads branching off a bus and rejoining at ⊕ (x₁) → layer 1 the same way (x₂) → tan <i>unembed</i> → grey <i>logits</i>. A dashed line shows positions entering only the Q/K inputs (shortformer). Beside each row, behind a thin rule, is grey text with that row’s equation.</li>
-  <li><b>Heads</b> are the composition figure’s dots: previous-token head 0.7 red, induction heads 1.4 and 1.10 teal, others grey. The dot’s fill level and the number under it show the selected quantity. Hatched red with ∅ = zero-ablated.</li>
-  <li><b>Links</b> are thin grey curves from each layer-0 head to each layer-1 head; width ∝ composition score (minus the 0.05 random baseline when “subtract baseline” is on, which also hides links at or below it). Dominant links (above 3× baseline) take the colour of what they feed: K green, Q teal, V red. In step 4, 0.7 → 1.4/1.10 animate. Links are weight-only and do not change with ablation; the dock says so whenever an ablation is active.</li>
-  <li><b>Induction colour code</b> everywhere (story, token strip, grids): key = green (B; the earlier A has a dashed green outline), query = teal (second A), information moved by attention = red, logit effect = purple (predicted B).</li>
-  <li><b>Grid</b>: drawn on a screen-space canvas in step with the map transform, so it stays sharp at every zoom. Lower triangle: grey sequential scale on √weight; upper triangle: hatched mask. Axis labels are sparse (every 5 at T=101), and role letters sit in their own lane so they never collide with the numbers. Opening takes 220 ms (instant with reduced motion).</li></ul>
+  <ul><li><b>Vertical = depth</b>, from bottom to top as in the paper: grey <i>tokens</i> → tan <i>embed</i> → residual stream (grey line with arrowheads) → layer 0 heads, which branch off a bus and join again at ⊕ (x₁) → layer 1, with the same layout (x₂) → tan <i>unembed</i> → grey <i>logits</i>. A dashed line shows that positions go only into the Q/K inputs (shortformer). Next to each row, behind a thin rule, grey text shows the equation for that row.</li>
+  <li><b>Heads</b> are the dots from the composition figure. The previous-token head 0.7 is red. The induction heads 1.4 and 1.10 are teal. All other heads are grey. The fill level of a dot and the number below it show the selected quantity. Red hatching with ∅ shows a zero-ablated head.</li>
+  <li><b>Links</b> are thin grey curves from each layer-0 head to each layer-1 head. The width of a link is proportional to its composition score. When “subtract baseline” is on, the map subtracts the 0.05 random baseline and hides links at or below it. Dominant links (more than 3× the baseline) use the colour of the input that they feed: K green, Q teal, V red. In step 4, the links 0.7 → 1.4/1.10 are animated. Links use only the weights, so ablation does not change them. When an ablation is active, the dock shows a note about this.</li>
+  <li><b>Induction colour code</b>, used in all views (story, token strip, grids): key = green (B, with a dashed green outline on the earlier A), query = teal (second A), information that attention moves = red, logit effect = purple (predicted B).</li>
+  <li><b>Grid</b>: the app draws the grid on a screen-space canvas that follows the map transform. Thus the grid stays sharp at all zoom levels. Lower triangle: grey sequential scale on √weight. Upper triangle: hatched mask. There are few axis labels (one in five at T=101). Role letters have their own lane, so they do not overlap the numbers. The grid opens in 220 ms (immediately with reduced motion).</li></ul>
   <h3>Tradeoffs</h3>
-  <ul><li>Doors protect novices but add a mode switch for experts; mitigated with one key and shared state.</li>
-  <li>One grid open at a time; comparing heads means flipping with ◀ ▶.</li>
-  <li>At T=101 a grid cell is ~5 px when fitted; zoom in, hover, or use the keyboard cell cursor for precision.</li>
-  <li>The equation column is part of the map, so on the focused stops it slides out of view; a small pinned KaTeX label (top right of the map) keeps that row’s equation visible.</li>
-  <li>Framings never cut a row of the diagram: each stop’s view is nudged so every row (heads with labels, boxes) is fully in view or fully out.</li>
-  <li>On the rail, a plain wheel over the map scrolls the story (a one-time hint says “Ctrl/⌘ + scroll to zoom”); zoom is Ctrl/⌘ + wheel, pinch, buttons or keys. Off the rail, a plain wheel zooms.</li>
-  <li>The head panel lives in the map column beside the grid, so it never covers the story text; the grid gets less width (about 440 px at 1440×900).</li>
-  <li>Story claims quote clean-run numbers; when ablations are active, a red note under each claim gives the ablated values in words.</li></ul>
+  <ul><li>Doors help novices, but they add a mode switch for experts. One key and shared state make this switch easy.</li>
+  <li>Only one grid can be open at a time. To compare heads, move between them with ◀ ▶.</li>
+  <li>At T=101, a fitted grid cell is approximately 5 px. For precision, zoom in, hover, or use the keyboard cell cursor.</li>
+  <li>The equation column is part of the map. Thus, on the focused stops, the column moves out of view. A small pinned KaTeX label (top right of the map) keeps the equation of that row visible.</li>
+  <li>A framing does not cut a row of the diagram. The app adjusts the view of each stop so that each row (heads with labels, boxes) is fully in view or fully out of view.</li>
+  <li>On the rail, a plain wheel movement over the map scrolls the story. A hint shows one time: “To zoom, use Ctrl/⌘ + scroll or pinch”. To zoom, use Ctrl/⌘ + wheel, pinch, the buttons or the keys. Off the rail, a plain wheel movement zooms.</li>
+  <li>The head panel is in the map column next to the grid, so it does not cover the story text. The cost is a narrower grid (approximately 440 px at 1440×900).</li>
+  <li>The story claims use numbers from the clean run. When ablations are active, a red note below each claim gives the ablated values in words.</li></ul>
   <h3>Draft paragraph for “Interactions and UI”</h3>
-  <p class="draft">The app is a guided scroll story beside a zoomable 2D map of the model. The map is drawn like the architecture figure in <i>A Mathematical Framework for Transformer Circuits</i>: a vertical residual stream runs from tokens and the embedding, through two rows of twelve attention heads that branch off and rejoin at ⊕, to the unembedding and logits, with each row’s equation beside it. Heads are dots coloured by role (previous-token red, induction teal); their fill shows a chosen quantity (induction, previous-token or first-token score, or ablation loss increase). Curved links between layers show Q-, K- or V-composition scores, which depend only on weights; a baseline toggle hides links at chance level. Students pan and zoom with wheel, pinch, drag, buttons or keys, and each story stop frames the part of the model it discusses. At each of the six induction steps the relevant heads glow as doors; clicking one opens its causally masked T×T attention grid in place, annotated with the induction colour code (key green, query teal, moved information red, logit effect purple). Hovering a cell shows its value and tokens; clicking opens the q·k/√d_head breakdown and Q/K/V detail with TransformerLens equivalents. Zero-ablation updates patterns, scores and per-token loss immediately; greedy generation grows open grids. “Step off the rail” makes every head available, with tables as text equivalents.</p>
+  <p class="draft">The app is a guided scroll story next to a 2D map of the model that you can zoom. The map uses the style of the architecture figure in <i>A Mathematical Framework for Transformer Circuits</i>. A vertical residual stream goes from the tokens and the embedding, through two rows of twelve attention heads, to the unembedding and the logits. The heads branch off the stream and join it again at ⊕. The equation for each row is next to that row. Heads are dots with a colour for each role (previous-token red, induction teal). The fill of a dot shows a selected quantity: the induction, previous-token or first-token score, or the loss increase from ablation. Curved links between the layers show Q-, K- or V-composition scores. These scores depend only on the weights. A baseline toggle hides links at chance level. Students pan and zoom with the wheel, pinch, drag, the buttons or the keys. Each story stop frames the part of the model that it discusses. At each of the six induction steps, the important heads glow as doors. A click on a door opens its causally masked T×T attention grid in place. The grid uses the induction colour code (key green, query teal, moved information red, logit effect purple). When you hover over a cell, the app shows its value and tokens. When you click a cell, the app shows the q·k/√d_head breakdown and the Q/K/V detail, with the TransformerLens equivalents. Zero-ablation updates the patterns, the scores and the per-token loss immediately. During greedy generation, the open grids become larger. “Step off the rail” makes all heads available, with tables as text equivalents.</p>
 </div></dialog>
 
 <script type="module">
@@ -598,10 +598,10 @@ function worldLabels(){
    ex(MG.yUn,`<b>Unembed</b> reads the last stream, ${m(R`x_{-1}=x_2`)}.`)+
    ex(MG.yOut[1],m(R`x_2=x_1+\sum_{h\in H_1}h(x_1)`))+
    ex(MG.yH[1],`<b>Layer 1.</b> Each head: ${m(R`h(x)=(A^h\otimes W_O^hW_V^h)\cdot x`)}`)+
-   ex(352,`<b>Composition</b> (curves): how much a layer-1 head’s ${m(R`W_{QK}`)} or ${m(R`W_{OV}`)} reads what a layer-0 head’s ${m(R`W_{OV}`)} writes. Weights only.`)+
+   ex(352,`<b>Composition</b> (curves): how much a layer-1 head’s ${m(R`W_{QK}`)} or ${m(R`W_{OV}`)} reads the output of a layer-0 head’s ${m(R`W_{OV}`)}. Uses weights only.`)+
    ex(MG.yOut[0],m(R`x_1=x_0+\sum_{h\in H_0}h(x_0)`))+
    ex(MG.yH[0],`<b>Layer 0.</b> ${m(R`A^h=\operatorname{softmax}^*\!\big((x{+}p)^{\top}W_{QK}^h(x{+}p)\big)`)}`)+
-   ex(MG.yEmb,`<b>Embed.</b> ${m(R`x_0=W_E\,t`)}; positions ${m('p')} enter only queries and keys.`)+
+   ex(MG.yEmb,`<b>Embed.</b> ${m(R`x_0=W_E\,t`)}; positions ${m('p')} go only into queries and keys.`)+
    ex(MG.yTok,`<b>Tokens</b> ${m('t')}, BOS prepended.`);
 }
 function levelPath(n,r){
@@ -798,7 +798,7 @@ function hover(e){
   vp.style.cursor='';
   const hd=e.target.closest&&e.target.closest('[data-head]'),lk=e.target.closest&&e.target.closest('[data-link]');
   if(hd){const k=hd.dataset.head,c=isDoor(k);setHoverHead(k);vp.style.cursor=c?'pointer':'help';
-    showTip(`<b>Head ${k}</b> · ${QNAME[S.quant]} <b>${fq(k)}</b>${S.abl.has(k)?' · <b>zero-ablated</b>':''}<br>${c?'Click: open its attention pattern · Shift-click: zero-ablate':'Not part of this step. Step off the rail (E) to open any head.'}`,e);return}
+    showTip(`<b>Head ${k}</b> · ${QNAME[S.quant]} <b>${fq(k)}</b>${S.abl.has(k)?' · <b>zero-ablated</b>':''}<br>${c?'Click: open its attention pattern · Shift-click: zero-ablate':'This head is not part of this step. To open any head, step off the rail (E).'}`,e);return}
   setHoverHead(null);
   if(lk){const[a,b]=lk.dataset.link.split(',').map(Number),s=COMP[S.kind][a][b];
     showTip(`<b>${S.kind}-composition</b> 0.${a} → 1.${b}: <b>${f3(s)}</b><br>random baseline ${f3(BASE)} · ${(s/BASE).toFixed(1)}× baseline<br>weights only: unchanged by ablation`,e);return}
@@ -806,7 +806,7 @@ function hover(e){
 }
 function clickAt(e,tgt,shift){
   const cell=cellAt(e);
-  if(cell){if(cell.j<=cell.i)selectCell(cell.i,cell.j);else toast('That cell is masked: a token cannot attend to a later token.');return}
+  if(cell){if(cell.j<=cell.i)selectCell(cell.i,cell.j);else toast('That cell is masked. A token cannot attend to a later token.');return}
   const hd=tgt&&tgt.closest&&tgt.closest('[data-head]');
   if(hd){headActivate(hd.dataset.head,shift,false);return}
   if(S.open&&S.gs){const r=vp.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,pd=gridPads(),{x,y,w}=S.gs;
@@ -839,61 +839,61 @@ const STOPS=[
  {label:'Verify',frame:'whole',doors:[],links:.6}
 ];
 const LOOK={
- 1:{'0.7':'Rows are destinations (queries), columns are sources (keys). The dotted line one cell below the diagonal is where this head puts its weight. The hatched upper triangle is the causal mask.','1.4':'Compare with 0.7: most rows put weight on column 0 (BOS), except along a dashed stripe far below the diagonal. The story explains that stripe.'},
- 3:{'0.7':'Look one cell below the main diagonal (dotted). The red ring is B’s row looking at A’s column: attention moving “A” into the stream at B.'},
- 4:{'1.4':'The teal row is the query of the second A. See where its weight goes: mostly BOS and one bright cell.','1.10':'The teal row is the query of the second A.'},
- 5:{'0.7':'The red ring is B looking at A: what 0.7 writes into B’s residual stream.','1.4':'Teal row = query (second A). Green column = key at B. They meet in one bright cell.','1.10':'Same row and column; usually a little sharper than 1.4.'},
+ 1:{'0.7':'Rows are destinations (queries). Columns are sources (keys). This head puts its weight on the dotted line, one cell below the diagonal. The hatched upper triangle is the causal mask.','1.4':'Compare this head with 0.7. Most rows put weight on column 0 (BOS). The exception is a dashed stripe far below the diagonal. The story explains that stripe.'},
+ 3:{'0.7':'Look one cell below the main diagonal (dotted line). The red ring is where the row of B attends to the column of A. Here, attention moves “A” into the stream at B.'},
+ 4:{'1.4':'The teal row is the query of the second A. Most of its weight goes to BOS and to one bright cell.','1.10':'The teal row is the query of the second A.'},
+ 5:{'0.7':'The red ring is where B attends to A. This is what 0.7 writes into the residual stream at B.','1.4':'Teal row = query (second A). Green column = key at B. They meet in one bright cell.','1.10':'Same row and column as 1.4. The pattern is usually a little sharper.'},
  6:{'1.4':'Red ring = (second A, first B). The dashed line is the whole induction stripe at a constant offset.','1.10':'Red ring = (second A, first B). Slightly sharper than 1.4.'},
- 7:{'1.4':'Where the weight sits says which token’s value is copied (B).','1.10':'Open it, then zero-ablate it: the clean loss stays as a line in the dock chart.'},
- 8:{'1.4':'Press Step in the card: the grid gains a row and a column per generated token (highlighted briefly).','1.10':'Press Step in the card: the grid grows.'}
+ 7:{'1.4':'The position of the weight shows which token’s value the head copies (B).','1.10':'Open this head, then zero-ablate it. The dock chart keeps the clean loss as a line.'},
+ 8:{'1.4':'Press Step in the card. For each generated token, the grid adds a row and a column (highlighted for a short time).','1.10':'Press Step in the card. The grid becomes larger.'}
 };
 const SH={seq:n=>`<span class="dm pos" title="sequence positions">seq ${n}</span>`,m:'<span class="dm dmodel" title="residual width">d_model 768</span>',h:'<span class="dm heads" title="heads per layer">n_heads 12</span>',d:'<span class="dm dhead" title="per-head width">d_head 64</span>'};
 const tkc=(i,c)=>`<span class="tk ${c||''}">${esc(tokStr(S.tokens[i]))}<sub>${i}</sub></span>`;
 const doorsHTML=n=>{const st=STOPS[n];if(!st.doors.length)return'';
-  return`<div class="doors"><h4>Doors on the map</h4>${st.doors.map(k=>`<button class="door" type="button" data-open="${k}" aria-pressed="false"><i style="border-color:${ROLEC[k]||C.grey}"></i>Open head ${k}</button>`).join('')}<div class="small" style="margin-top:6px">Clicking the glowing dot on the map does the same. <kbd>Esc</kbd> closes the grid.</div></div>`};
+  return`<div class="doors"><h4>Doors on the map</h4>${st.doors.map(k=>`<button class="door" type="button" data-open="${k}" aria-pressed="false"><i style="border-color:${ROLEC[k]||C.grey}"></i>Open head ${k}</button>`).join('')}<div class="small" style="margin-top:6px">A click on the glowing dot on the map does the same thing. Press <kbd>Esc</kbd> to close the grid.</div></div>`};
 const ablBtn=(k,txt)=>`<button class="tgl" type="button" data-ab="${k}" aria-pressed="false" style="font-family:var(--sans)">${txt||'Zero-ablate '+k}</button>`;
-const noDemo=`<div class="warn">This prompt has no repeated bigram (a token followed by the same token as last time), so the induction steps have nothing to highlight. Try <b>random tokens ×2</b> or the <b>sentence</b> example on the first stop.</div>`;
+const noDemo=`<div class="warn">This prompt has no repeated bigram (a token that is followed by the same token as at its earlier occurrence). Thus the induction steps have nothing to show. Use <b>random tokens ×2</b> or the <b>sentence</b> example on the first stop.</div>`;
 const CODE=`<div class="cc" aria-label="Induction colour code"><span><i style="border-color:${C.k};background:${C.kT}"></i>key (B)</span><span><i style="border-color:${C.q};background:${C.qT}"></i>query (second A)</span><span><i style="border-color:${C.mv}"></i>attention moves information</span><span><i style="border-color:${C.lg};background:#e7dff7"></i>logit effect (predicted B)</span></div>`;
 function renderStory(){
   const d=S.demo,V=x=>`<b data-v="${x}"></b>`,dyn=n=>$('#s'+n+' .dyn');
-  dyn(1).innerHTML=`<p class="plain">This is the whole model, drawn like the figures in <i>A Mathematical Framework for Transformer Circuits</i>. Read it <b>bottom to top</b>. Tokens are embedded into the <b>residual stream</b> (the vertical line). Each layer’s 12 heads read the stream and add their outputs back at ⊕. The unembedding turns the last stream into logits.</p>
+  dyn(1).innerHTML=`<p class="plain">This map shows the full model in the style of the figures in <i>A Mathematical Framework for Transformer Circuits</i>. Read it from <b>bottom to top</b>. The embedding puts the tokens into the <b>residual stream</b> (the vertical line). In each layer, 12 heads read the stream and add their outputs back at ⊕. The unembedding changes the last stream into logits.</p>
   ${md(R`\begin{aligned}x_0&=W_E\,t,\qquad x_{i+1}=x_i+\sum_{h\in H_i}h(x_i),\\ T(t)&=W_U\,x_{-1}\end{aligned}`)}
   ${md(R`\begin{aligned}h(x)&=\big(A^h\otimes W_O^hW_V^h\big)\cdot x,\\ A^h&=\operatorname{softmax}^*\!\Big(\tfrac{(x+p)^{\top}W_{QK}^h\,(x+p)}{\sqrt{d_{\text{head}}}}\Big),\\ W_{QK}^h&=W_Q^{h\top}W_K^h\end{aligned}`)}
-  <p class="plain sec">One difference from the paper’s toy models: positions ${m('p')} (shortformer) are added only where queries and keys are computed, never to the stream or to the values. ${m(R`\operatorname{softmax}^*`)} is the causally masked softmax.</p>
+  <p class="plain sec">This model is different from the toy models in the paper in one way. The positions ${m('p')} (shortformer) go only into the query and key calculations. They do not go into the stream or into the values. ${m(R`\operatorname{softmax}^*`)} is the causally masked softmax.</p>
   <p class="small">${m('x')}: ${SH.seq(S.T)} × ${SH.m} · per head ${m('q,k,v')}: ${SH.seq(S.T)} × ${SH.d} · ${m('A^h')}: ${SH.seq(S.T)} × ${SH.seq(S.T)} · ${SH.h} per layer</p>
-  <p class="plain">Each dot is a head; its fill and number show the quantity picked in the toolbar. The grey curves are <b>composition scores</b>: how much a layer-1 head’s weights read what a layer-0 head writes. Drag to pan; zoom with Ctrl/⌘ + scroll, a pinch, or − + Fit. Plain scrolling keeps reading the story.</p>
+  <p class="plain">Each dot is a head. Its fill and its number show the quantity that you select in the toolbar. The grey curves show <b>composition scores</b>. A composition score measures how much the weights of a layer-1 head read the output of a layer-0 head. Drag to pan. To zoom, use Ctrl/⌘ + scroll, pinch, or − + Fit. A plain scroll moves the story.</p>
   ${CODE}${doorsHTML(1)}`;
-  dyn(2).innerHTML=d?`<p class="plain">If a text has already shown ${tkc(d.j,'a')} followed by ${tkc(d.b,'b')}, then the next time ${tkc(d.i,'q')} appears, ${tkc(d.b,'b')} is a good bet. Here the later A is at position ${d.i}, so the model should predict ${tkc(d.t,'p')}. The token strip above the map marks these four tokens.</p>
+  dyn(2).innerHTML=d?`<p class="plain">If a text already contains ${tkc(d.j,'a')} followed by ${tkc(d.b,'b')}, then ${tkc(d.b,'b')} is a good prediction after the next ${tkc(d.i,'q')}. Here, the second A is at position ${d.i}. Thus the correct prediction is ${tkc(d.t,'p')}. The token strip above the map marks these four tokens.</p>
   ${md(R`\mathcal{L}_i=-\log p\,(t_{i+1}\mid t_{\le i})`)}
-  <p class="plain">That is why the second copy is cheap: in a clean run, mean loss over the second half is ${V('lossrep')}, against about ${V('lossfirst')} on the first pass. The bar under the map shows it per token.</p>
+  <p class="plain">This is why the loss on the second copy is low. In a clean run, the mean loss on the second half is ${V('lossrep')}. On the first pass, it is approximately ${V('lossfirst')}. The bar below the map shows the loss for each token.</p>
   <p class="ablnote" data-ablnote="2" hidden></p>
-  <details><summary>Predict first: what jobs must two attention layers do?</summary><p>Something must know what came <em>before</em> each token, and something must search for an earlier copy of the current token and read what followed it. The next steps find both.</p></details>`:noDemo;
-  dyn(3).innerHTML=d?`<p class="plain">Head 0.7 in layer 0 does one simple thing: every token attends to the token just before it. Its output is added to the stream, so the residual stream at ${tkc(d.b,'b')} now carries a vector that encodes “my previous token was ${esc(tokStr(d.A))}”. That is attention <span style="color:var(--mv);font-weight:600">moving information</span>.</p>
+  <details><summary>Predict first: what must the two attention layers do?</summary><p>One part of the model must know the token <em>before</em> each token. Another part must find an earlier copy of the current token and read the token after it. The next steps show the two parts.</p></details>`:noDemo;
+  dyn(3).innerHTML=d?`<p class="plain">Head 0.7 in layer 0 does one simple thing. Each token attends to the token immediately before it. The head adds its output to the stream. Thus the residual stream at ${tkc(d.b,'b')} now contains a vector that encodes “my previous token was ${esc(tokStr(d.A))}”. This is how attention <span style="color:var(--mv);font-weight:600">moves information</span>.</p>
   ${md(R`\begin{aligned}&A^{0.7}_{i,\,i-1}\approx 1\\ \Longrightarrow\ &h^{0.7}(x)_i\approx W_O^{0.7}W_V^{0.7}\,x_{i-1}\end{aligned}`)}
   <div class="nums"><div><b>${V('prev:0.7')}</b>0.7 prev-token score<span class="cl"> (clean)</span></div><div><b>${V('prev:best')}</b>best other L0 head</div></div><p class="ablnote" data-ablnote="3" hidden></p>
-  ${doorsHTML(3)}<p class="small">Cause and effect: ${ablBtn('0.7')} then read on and watch what happens downstream.</p>`:noDemo;
-  dyn(4).innerHTML=d?`<p class="plain">Now the second ${tkc(d.i,'q')} must ask: “who followed an A last time?” In layer 1, heads 1.4 and 1.10 build a <b>query</b> from the stream at that position plus its position embedding. Row ${d.i} of their pattern is the question; the next steps show what answers it.</p>
+  ${doorsHTML(3)}<p class="small">Cause and effect: ${ablBtn('0.7')}. Then continue to read and look at the downstream changes.</p>`:noDemo;
+  dyn(4).innerHTML=d?`<p class="plain">Now the second ${tkc(d.i,'q')} asks a question: “which token came after A last time?” In layer 1, heads 1.4 and 1.10 make a <b>query</b> from the stream at that position plus its position embedding. Row ${d.i} of their pattern is the question. The next steps show the answer.</p>
   ${md(R`\begin{aligned}q_i&=W_Q^{1.4}\,(x_i+p_i),\\ \operatorname{score}_{ij}&=\frac{q_i^{\top}k_j}{\sqrt{d_{\text{head}}}},\quad j\le i\end{aligned}`)}
-  <p class="plain sec">The direct QK circuit ${m(R`W_E^{\top}W_{QK}^{1.4}W_E`)} cannot do this alone: B’s own embedding says nothing about A.</p>
+  <p class="plain sec">The direct QK circuit ${m(R`W_E^{\top}W_{QK}^{1.4}W_E`)} cannot do this alone. The embedding of B has no information about A.</p>
   <p class="small">${m('q_i')} ${SH.d} · ${m('k_j')} ${SH.d} · scores ${SH.seq(S.T)} × ${SH.seq(S.T)}</p>${doorsHTML(4)}`:noDemo;
-  dyn(5).innerHTML=d?`<p class="plain">The key at ${tkc(d.b,'b')} is computed from the stream at B, and that stream now contains what 0.7 wrote: “A came before me”. So a query from ${tkc(d.i,'q')} matches the key at B. That is <b>K-composition</b>: 1.4 and 1.10 read 0.7’s output through their key input. The two bright green curves on the map carry it.</p>
+  dyn(5).innerHTML=d?`<p class="plain">The heads calculate the key at ${tkc(d.b,'b')} from the stream at B. That stream now contains the output of 0.7: “A came before me”. Thus a query from ${tkc(d.i,'q')} matches the key at B. This is <b>K-composition</b>: 1.4 and 1.10 read the output of 0.7 through their key input. The two bright green curves on the map show this link.</p>
   ${md(R`\begin{aligned}k_b&=W_K^{1.4}(x_b+p_b),\\ x_b&\ \ni\ W_O^{0.7}W_V^{0.7}\,x_{b-1}\end{aligned}`)}
   ${md(R`\begin{aligned}q_i^{\top}k_b\ &\ni\ (x_i+p_i)^{\top}\,W_{QK}^{1.4}\,W_{OV}^{0.7}\,x_{b-1},\\ &\text{large when }t_{b-1}=t_i\end{aligned}`)}
   ${md(R`\text{K-comp}(0.7\to1.4)=\frac{\lVert W_{QK}^{1.4}\,W_{OV}^{0.7}\rVert_F}{\lVert W_{QK}^{1.4}\rVert_F\,\lVert W_{OV}^{0.7}\rVert_F}`)}
   <div class="nums"><div><b>${V('comp:K:7:4')}</b>0.7 → 1.4</div><div><b>${V('comp:K:7:10')}</b>0.7 → 1.10</div><div><b>${f3(BASE)}</b>random baseline</div></div>
-  <p class="plain small">Switch the map’s links to Q or V: nothing stands out. Only K-composition is dominant.</p>
+  <p class="plain small">Change the map links to Q or V. No link is dominant there. Only K-composition is dominant.</p>
   ${doorsHTML(5)}
-  <div class="note"><b>Try it:</b> ${ablBtn('0.7')} The curves do <em>not</em> change: a composition score is computed from weights (${m(R`W_{QK}^{1.4}`)} and ${m(R`W_{OV}^{0.7}`)}), and zero-ablation does not touch weights. It removes 0.7’s <em>output</em>, so the key at B stops carrying “A came before me”. Open 1.4 to see the stripe fade, and watch the loss in the dock.</div>`:noDemo;
-  dyn(6).innerHTML=d?`<p class="plain">With keys like that, ${tkc(d.i,'q')}’s query lines up with the key at ${tkc(d.b,'b')}: heads 1.4 and 1.10 attend from position ${d.i} to position ${d.b}, one past the earlier A. Across every later row this is a diagonal <b>stripe</b> at constant offset ${d.b-d.i} (for the default 101-token prompt, ${m(R`1-\text{seq\_len}=-49`)}).</p>
+  <div class="note"><b>Try it:</b> ${ablBtn('0.7')} The curves do <em>not</em> change. The app calculates a composition score from the weights only (${m(R`W_{QK}^{1.4}`)} and ${m(R`W_{OV}^{0.7}`)}), and zero-ablation does not change the weights. Zero-ablation removes the <em>output</em> of 0.7. Thus the key at B no longer contains “A came before me”. Open 1.4 to see the stripe become weaker. Look at the loss in the dock.</div>`:noDemo;
+  dyn(6).innerHTML=d?`<p class="plain">With these keys, the query of ${tkc(d.i,'q')} matches the key at ${tkc(d.b,'b')}. Heads 1.4 and 1.10 attend from position ${d.i} to position ${d.b}, one position after the earlier A. In all later rows, this makes a diagonal <b>stripe</b> at the constant offset ${d.b-d.i}. For the default prompt of 101 tokens, the offset is ${m(R`1-\text{seq\_len}=-49`)}.</p>
   ${md(R`\begin{aligned}&A^{1.h}_{i,\,j+1}\ \text{large where}\ t_j=t_i,\\ &\text{induction score}=\operatorname{mean}\,\operatorname{diag}\big(A^{1.h},\,1-\text{seq\_len}\big)\end{aligned}`)}
   <div class="nums"><div><b>${V('ind:1.4')}</b>1.4 induction score<span class="cl"> (clean)</span></div><div><b>${V('ind:1.10')}</b>1.10 induction score<span class="cl"> (clean)</span></div></div><p class="ablnote" data-ablnote="6" hidden></p>
-  ${doorsHTML(6)}<p class="small">${ablBtn('0.7')} : both stripes collapse and the scores above fall, while the composition curves stay put.</p>`:noDemo;
-  dyn(7).innerHTML=d?`<p class="plain">Attention only <em>moves</em> information. The OV circuit of 1.4 and 1.10 takes the stream at ${tkc(d.b,'b')} and writes it into the stream at ${tkc(d.i,'q')}, in a direction the unembedding reads as “next token is B”. The model predicts ${tkc(d.t,'p')} without having seen it here.</p>
+  ${doorsHTML(6)}<p class="small">${ablBtn('0.7')}: both stripes disappear and the scores above decrease. The composition curves do not change.</p>`:noDemo;
+  dyn(7).innerHTML=d?`<p class="plain">Attention only <em>moves</em> information. The OV circuit of 1.4 and 1.10 reads the stream at ${tkc(d.b,'b')} and writes it into the stream at ${tkc(d.i,'q')}. It writes in a direction that the unembedding reads as “next token is B”. Thus the model predicts ${tkc(d.t,'p')} before B occurs at this position.</p>
   ${md(R`\begin{aligned}h^{1.4}(x)_i&\approx A^{1.4}_{i,b}\;W_O^{1.4}W_V^{1.4}\,x_b,\\ \Delta T(t)_i&\approx W_U\,W_{OV}^{1.4}\,W_E\;t_b\end{aligned}`)}
-  <p class="plain sec">${m(R`W_U W_{OV}^{h} W_E`)} is the head’s OV circuit (vocab × vocab). For a copying head its diagonal is large: attending to B raises B’s logit.</p>
+  <p class="plain sec">${m(R`W_U W_{OV}^{h} W_E`)} is the OV circuit of the head (vocab × vocab). A copying head has a large diagonal. Thus, when the head attends to B, the logit of B increases.</p>
   <div class="nums"><div><b style="color:var(--lg)">${V('dla:1.4')}</b>1.4 logit for B<span class="cl"> (clean)</span></div><div><b style="color:var(--lg)">${V('dla:1.10')}</b>1.10 logit for B<span class="cl"> (clean)</span></div><div><b>${V('lossrep')}</b>mean loss, 2nd half<span class="cl"> (clean)</span></div></div><p class="ablnote" data-ablnote="7" hidden></p>
   <p class="small">Mock direct logit attribution. ${ablBtn('1.4')} ${ablBtn('1.10')}</p>${doorsHTML(7)}`:noDemo;
-  dyn(8).innerHTML=`<p class="plain">Greedy decoding: take the arg-max token, append it, run again. Once the model has seen a repeat it keeps repeating: the circuit completes each token from its earlier copy. Zero-ablate 0.7 first and the continuation breaks.</p>${md(R`t_{T+1}=\arg\max_v\,T(t)_{T,\,v}`)}<p class="ablnote" data-ablnote="8" hidden></p>${doorsHTML(8)}`;
+  dyn(8).innerHTML=`<p class="plain">Greedy decoding: select the arg-max token, add it to the end and run the model again. After the model sees a repeat, it continues to repeat. The circuit completes each token from its earlier copy. If you zero-ablate 0.7 first, the continuation breaks.</p>${md(R`t_{T+1}=\arg\max_v\,T(t)_{T,\,v}`)}<p class="ablnote" data-ablnote="8" hidden></p>${doorsHTML(8)}`;
   $$('.door').forEach(b=>b.onclick=e=>headActivate(b.dataset.open,false,e.detail===0));
   bindAblButtons();fillVals();refreshButtons();requestAnimationFrame(()=>fitEqs($('#story')));
 }
@@ -913,11 +913,11 @@ function fillVals(){
   const names=[...S.abl].sort().join(', '),one=S.abl.size===1?'is':'are';
   $$('[data-ablnote]').forEach(el=>{const n=+el.dataset.ablnote;let h='';
     if(S.abl.size&&S.demo){const lr=lossRep(),lc=lossRepClean(),i4=S.q['1.4'].ind,i10=S.q['1.10'].ind,c4=S.qc['1.4'].ind,c10=S.qc['1.10'].ind,broken=lr-lc>.5;
-      if(n===2)h=`With ${names} zero-ablated, the second-half loss is <b>${f2(lr)}</b> instead of ${f2(lc)}: ${broken?'<b>no longer cheap</b>. The copying circuit is broken.':'about the same, so these heads are not part of the copying circuit.'}`;
-      if(n===3)h=S.abl.has('0.7')?`0.7 is zero-ablated. Its <em>pattern</em> (and its score above) is unchanged, because ablation zeroes its output ${m('z')}, not its attention. What it moved into the stream at B (“A came before me”) is gone.`:`${names} ${one} zero-ablated; 0.7 itself is intact.`;
-      if(n===6)h=`With ${names} zero-ablated, the induction scores are <b>${f2(i4)}</b> (1.4) and <b>${f2(i10)}</b> (1.10), against ${f2(c4)} and ${f2(c10)} clean: ${i4<.5*c4&&i10<.5*c10?'<b>the stripe is gone</b>.':i4<.5*c4||i10<.5*c10?'one stripe is gone.':'the stripe survives.'}`;
-      if(n===7)h=`With ${names} zero-ablated: 1.4 adds <b>${(dla('1.4')>=0?'+':'')+f2(dla('1.4'))}</b> and 1.10 adds <b>${(dla('1.10')>=0?'+':'')+f2(dla('1.10'))}</b> to B’s logit, and the second-half loss is <b>${f2(lr)}</b>${broken?': B is no longer predicted.':'.'}`;
-      if(n===8)h=`With ${names} zero-ablated, ${indFactor(S.abl)>.5?'enough of the circuit survives that generation still copies.':'the circuit is broken: generation will not copy the earlier tokens.'}`}
+      if(n===2)h=`With ${names} zero-ablated, the second-half loss is <b>${f2(lr)}</b>, not ${f2(lc)}. ${broken?'The loss is <b>no longer low</b>. The copying circuit is broken.':'The loss is approximately the same. Thus these heads are not part of the copying circuit.'}`;
+      if(n===3)h=S.abl.has('0.7')?`0.7 is zero-ablated. Its <em>pattern</em> and its score above do not change, because ablation sets its output ${m('z')} to zero, not its attention. The information that it moved into the stream at B (“A came before me”) is gone.`:`${names} ${one} zero-ablated. Head 0.7 is not ablated.`;
+      if(n===6)h=`With ${names} zero-ablated, the induction scores are <b>${f2(i4)}</b> (1.4) and <b>${f2(i10)}</b> (1.10). The clean scores are ${f2(c4)} and ${f2(c10)}. ${i4<.5*c4&&i10<.5*c10?'<b>The stripe is gone</b>.':i4<.5*c4||i10<.5*c10?'One stripe is gone.':'The stripe is still there.'}`;
+      if(n===7)h=`With ${names} zero-ablated, 1.4 adds <b>${(dla('1.4')>=0?'+':'')+f2(dla('1.4'))}</b> and 1.10 adds <b>${(dla('1.10')>=0?'+':'')+f2(dla('1.10'))}</b> to the logit of B. The second-half loss is <b>${f2(lr)}</b>${broken?'. The model no longer predicts B.':'.'}`;
+      if(n===8)h=`With ${names} zero-ablated, ${indFactor(S.abl)>.5?'a sufficient part of the circuit is still there, so generation continues to copy.':'the circuit is broken. Generation does not copy the earlier tokens.'}`}
     el.innerHTML=h;el.hidden=!h});
 }
 
@@ -936,7 +936,7 @@ function closeHead(){
 function selectCell(i,j){S.cell={i,j};S.ovDirty=true;renderDetail();live(`Cell dest ${i}, source ${j}, attention ${f3(S.pat[S.open.k][i*S.T+j])}`)}
 function cellReadout(c){
   const el=$('#cellRO');if(!el)return;
-  if(!c){el.textContent=S.cell?`Pinned: dest ${S.cell.i} ${tokStr(S.tokens[S.cell.i])} ← source ${S.cell.j} ${tokStr(S.tokens[S.cell.j])}`:'Hover a cell for its exact value.';return}
+  if(!c){el.textContent=S.cell?`Pinned: dest ${S.cell.i} ${tokStr(S.tokens[S.cell.i])} ← source ${S.cell.j} ${tokStr(S.tokens[S.cell.j])}`:'Hover over a cell to see its exact value.';return}
   const{i,j}=c;el.textContent=j>i?`masked: dest ${i} cannot attend to source ${j}`:`dest ${i} ${tokStr(S.tokens[i])} ← source ${j} ${tokStr(S.tokens[j])} : ${f3(S.pat[S.open.k][i*S.T+j])}`;
 }
 const roleChips=k=>{const q=S.qc[k],r=[];
@@ -954,11 +954,11 @@ function renderSheet(kbd){
    <button class="tgl" type="button" data-ab="${k}" aria-pressed="false">Zero-ablate</button>
    ${S.abl.size?`<button class="seg" id="shDelta" type="button" aria-pressed="${S.delta}">Δ vs clean</button>`:''}
    <button class="btn sm" id="shClose" type="button">Close (Esc)</button></div>
-   <p class="small" style="margin:8px 0 2px">Layer ${L} · ${S.T}×${S.T} pattern ${m('A^{'+k+'}')} · induction <b>${f2(q.ind)}</b> · prev-token <b>${f2(q.prev)}</b> · first-token <b>${f2(q.first)}</b> · ablation Δloss <b>+${f2(q.abl)}</b>${S.abl.has(k)?' · <b style="color:var(--bad)">this head is zero-ablated: its z (and so its output) is 0; the pattern is still computed and shown for reference</b>':''}</p>
+   <p class="small" style="margin:8px 0 2px">Layer ${L} · ${S.T}×${S.T} pattern ${m('A^{'+k+'}')} · induction <b>${f2(q.ind)}</b> · prev-token <b>${f2(q.prev)}</b> · first-token <b>${f2(q.first)}</b> · ablation Δloss <b>+${f2(q.abl)}</b>${S.abl.has(k)?' · <b style="color:var(--bad)">this head is zero-ablated. Its z and its output are 0. The app still calculates and shows the pattern for reference</b>':''}</p>
    ${look?`<div class="look"><b>Look for:</b> ${look}</div>`:''}
    <div class="legend">${S.delta?`<span>−0.8</span><i style="background:linear-gradient(90deg,#b35806,#f1b37a,#fff,#a3b9df,#2c5aa0)"></i><span>+0.8 (ablated − clean)</span>`:`<span>0</span><i style="background:linear-gradient(90deg,${RAMP.join(',')})"></i><span>1 (shade ∝ √weight)</span>`}<b></b><span>masked</span><span>· dotted = offset −1 · dashed = induction offset · <span style="color:var(--mv);font-weight:600">red ring</span> = information moved</span></div>
    <div class="ro" id="cellRO" aria-live="polite"></div>
-   <div id="gnav" tabindex="0" role="application" aria-label="Cell cursor. Arrow keys move through the grid cells; Home and End jump; the detail below updates.">Cell cursor: focus here and use the arrow keys (Home/End: first/last cell).</div>
+   <div id="gnav" tabindex="0" role="application" aria-label="Cell cursor. Use the arrow keys to move through the grid cells. Home and End go to the first and last cell. The detail below updates.">Cell cursor: put focus here and use the arrow keys (Home/End: first/last cell).</div>
    <div id="cellDetail"></div>
    <details><summary>Head internals: Q/K/V → scores → pattern → z → result (paper and TransformerLens)</summary>
    <table class="pipe"><tr><th>step</th><th>paper (column vectors)</th><th>TransformerLens (row vectors) · hook</th></tr>
@@ -998,7 +998,7 @@ function topRows(d,n){const s=[...d.rows].sort((a,b)=>Math.abs(b.v)-Math.abs(a.v
 function vbars(arr){const mx=Math.max(1e-6,...arr.map(Math.abs)),w=3;return`<svg viewBox="0 0 ${arr.length*w} 34" preserveAspectRatio="none" role="img" aria-label="64 values, max ${f2(mx)}">${[...arr].map((v,i)=>{const h=Math.abs(v)/mx*16;return`<rect x="${i*w+.3}" y="${v>=0?17-h:17}" width="${w-.6}" height="${Math.max(.4,h)}" fill="${v>=0?'#1f4e9c':C.door}"/>`}).join('')}<line x1="0" x2="${arr.length*w}" y1="17" y2="17" stroke="#999" stroke-width=".4"/></svg>`}
 function renderDetail(){
   const el=$('#cellDetail');if(!el)return;const c=S.cell;
-  if(!c){el.innerHTML='<p class="small">Click a cell in the grid (or use the cell cursor) to open its score and where it comes from.</p>';cellReadout(null);return}
+  if(!c){el.innerHTML='<p class="small">Click a cell in the grid, or use the cell cursor, to see its score and the source of the score.</p>';cellReadout(null);return}
   const{i,j}=c,o=S.open,w=S.pat[o.k][i*S.T+j],dk=decomp(o.L,o.H,i,j,'K'),dq=decomp(o.L,o.H,i,j,'Q'),sc=dk.score,cw=cleanPat(o.k)[i*S.T+j],raw=sc*8;
   const kv=vec(o.L,o.H,j,2),q0=vec(o.L,o.H,i,1);let s0=0,kk=0;for(let d=0;d<64;d++){s0+=q0[d]*kv[d];kk+=kv[d]*kv[d]}
   const qv=q0.map((x,d)=>x+(raw-s0)*kv[d]/kk),pr=qv.map((x,d)=>x*kv[d]);
@@ -1006,12 +1006,12 @@ function renderDetail(){
   <p style="margin:2px 0">${tkc(i,'q')} attends to ${tkc(j,'b')} with weight <b>${f3(w)}</b> (clean ${f3(cw)}${S.abl.size?`, Δ ${(w-cw>=0?'+':'')+f3(w-cw)}`:''}).</p>
   <p style="margin:4px 0">${m(R`q_i^{\top}k_j=`+f2(raw)+R`\;\xrightarrow{\;\div\sqrt{64}\;}\;`+f2(sc)+R`\;\xrightarrow{\;\operatorname{softmax}_{j\le i}\;}\;A_{ij}=`+f3(w))}</p>
   <p class="small" style="margin:2px 0">TransformerLens: <code>cache["attn_scores", ${o.L}][${o.H}, ${i}, ${j}]</code> = ${f2(sc)} · <code>cache["pattern", ${o.L}][${o.H}, ${i}, ${j}]</code> = ${f3(w)}</p>
-  <h3>Key side: which part of the stream at ${j} carries the score</h3>${bars(topRows(dk,5))}
-  <h3>Query side: which part of the stream at ${i} carries the score</h3>${bars(topRows(dq,4))}
-  <p class="small">${o.L===1?'Components: token embedding, position embedding, and each layer-0 head’s output (K- and Q-composition). Zero-ablated heads contribute 0. Mock decomposition; sums to the score.':'Layer 0 reads only the token and position embeddings. Mock decomposition; sums to the score.'}</p>
+  <h3>Key side: the parts of the stream at ${j} that make the score</h3>${bars(topRows(dk,5))}
+  <h3>Query side: the parts of the stream at ${i} that make the score</h3>${bars(topRows(dq,4))}
+  <p class="small">${o.L===1?'Components: token embedding, position embedding, and each layer-0 head’s output (K- and Q-composition). Zero-ablated heads add 0. Mock decomposition. The parts add up to the score.':'Layer 0 reads only the token and position embeddings. Mock decomposition. The parts add up to the score.'}</p>
   <h3>Vectors (64 dims, d_head)</h3>
   <div class="vecs"><span>q<sub>${i}</sub></span>${vbars(qv)}<span>k<sub>${j}</sub></span>${vbars(kv)}<span>q⊙k (Σ=${f2(raw)})</span>${vbars(pr)}</div>
-  <p class="small">${m(R`z_i\mathrel{+}=A_{ij}\,v_j`)}: this cell sends ${f3(w)} of ${m('v_j')} ${SH.d} to position ${i}; the head then writes ${m(R`W_O^{${o.k}}z_i`)} ${SH.m}. Illustrative vectors (mock), constrained to reproduce the score.</p></div>`;
+  <p class="small">${m(R`z_i\mathrel{+}=A_{ij}\,v_j`)}: this cell sends ${f3(w)} of ${m('v_j')} ${SH.d} to position ${i}. The head then writes ${m(R`W_O^{${o.k}}z_i`)} ${SH.m}. The vectors are mock examples that give the same score.</p></div>`;
   cellReadout(null);
 }
 
@@ -1072,12 +1072,12 @@ function drawStrip(){
 }
 function tokHue(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return (h>>>0)%100/100}
 function stripTip(e){const r=stripCv.getBoundingClientRect(),sr=$('#stage').getBoundingClientRect(),i=Math.floor((e.clientX-r.left)/(r.width/S.T));
-  if(i>=0&&i<S.T){stripHover=i;const L=i<S.T-1?S.loss[i]:null;const t=tipEl;t.innerHTML=`token <b>${i}</b> <span class=mono>${esc(tokStr(S.tokens[i]))}</span>${L!=null?` · loss predicting next: ${f2(L)}`:''}${S.isPred[i]?'<br>completed by a repeat: click to follow it in the story':''}`;t.style.display='block';
+  if(i>=0&&i<S.T){stripHover=i;const L=i<S.T-1?S.loss[i]:null;const t=tipEl;t.innerHTML=`token <b>${i}</b> <span class=mono>${esc(tokStr(S.tokens[i]))}</span>${L!=null?` · loss predicting next: ${f2(L)}`:''}${S.isPred[i]?'<br>A repeat completes this token. Click to follow it in the story.':''}`;t.style.display='block';
     const vr=vp.getBoundingClientRect();t.style.left=clamp(e.clientX-vr.left+10,6,vr.width-t.offsetWidth-6)+'px';t.style.top='6px'}else{stripHover=-1;hideTip()}drawStrip()}
 stripCv.addEventListener('pointermove',stripTip);
 stripCv.addEventListener('pointerleave',()=>{stripHover=-1;hideTip();drawStrip()});
 stripCv.addEventListener('click',()=>{if(stripHover<0)return;const i=stripHover;
-  if(S.isPred[i]){pickDemo(i);S.gridDirty=true;renderStory();renderChips();refreshAll();live(`Following repeated token at position ${i}`)}else toast('That token is not completed by a repeated bigram, so there is nothing to follow.')});
+  if(S.isPred[i]){pickDemo(i);S.gridDirty=true;renderStory();renderChips();refreshAll();live(`Following repeated token at position ${i}`)}else toast('No repeated bigram completes that token. There is nothing to follow.')});
 function renderChips(){
   const dm=S.demo;
   $('#chips').innerHTML=S.tokens.map((t,i)=>{const L=i<S.T-1?S.loss[i]:null;const lc=L==null?'#ddd':rampCss(clamp(L/11,0,1)*.85+.1);
@@ -1114,7 +1114,7 @@ function enterExplore(k){
   $('#bExplore').setAttribute('aria-pressed','true');$('#bExplore').textContent='Back to the story';
   refreshExplore();renderMap();drawStrip();
   requestAnimationFrame(()=>{resizeVp();if(S.open)renderSheet()});
-  if(k)openHead(k);live('Exploring freely. Every head is clickable. Press Escape to return to the story.');
+  if(k)openHead(k);live('Free exploration mode. You can click all heads. Press Escape to go back to the story.');
 }
 function exitExplore(){
   if(S.mode!=='explore')return;
@@ -1175,7 +1175,7 @@ function genReplay(){clearInterval(GEN.timer);GEN.timer=null;if(GEN.base){setTok
 function renderGen(){
   $$('.genOut').forEach(o=>o.innerHTML=GEN.out.map(g=>`<li><span class="tk gen ${g.ok?'p':'miss'}" title="${g.ok?'matches the induction prediction':'no induction signal: arbitrary token'}">${esc(g.tok)}</span></li>`).join(''));
   $$('.gPlay').forEach(b=>b.textContent=GEN.timer?'Pause':'Play');
-  $$('.genInfo').forEach(p=>p.textContent=`${GEN.n}/${maxNew()} new tokens · greedy (argmax) · ${!S.abl.size?'clean run: the induction circuit is intact, so the continuation copies earlier tokens':indFactor(S.abl)>.5?`with ${[...S.abl].sort().join(', ')} ablated the circuit still mostly works: the continuation copies`:`with ${[...S.abl].sort().join(', ')} ablated the circuit is broken: the continuation falls back to arbitrary tokens`}`);
+  $$('.genInfo').forEach(p=>p.textContent=`${GEN.n}/${maxNew()} new tokens · greedy (argmax) · ${!S.abl.size?'clean run: the induction circuit is complete, so the continuation copies earlier tokens':indFactor(S.abl)>.5?`with ${[...S.abl].sort().join(', ')} ablated, most of the circuit still works. The continuation copies.`:`with ${[...S.abl].sort().join(', ')} ablated, the circuit is broken. The continuation gives arbitrary tokens.`}`);
 }
 
 /* ============ prompt / run ============ */
@@ -1186,9 +1186,9 @@ function runTokens(arr){
 }
 function promptError(id,msg){const inp=$('#'+id),er=$('#'+id+'Err');if(msg){er.textContent=msg;er.hidden=false;inp.setAttribute('aria-invalid','true');inp.focus()}else{er.hidden=true;er.textContent='';inp.removeAttribute('aria-invalid')}}
 function runText(txt,id){const n=rawToks(txt).length;
-  if(!txt.trim()){promptError(id,'The prompt is empty. Type some text (or pick an example) and run again. Nothing was run.');live('Error: empty prompt');return}
-  if(n<2){promptError(id,'Need at least two tokens after BOS to say anything about next-token prediction.');return}
-  if(n>100){promptError(id,`The prompt is ${n} tokens; this prototype accepts up to 100 (plus BOS). Shorten it and run again. Nothing was run.`);live('Error: prompt too long');return}
+  if(!txt.trim()){promptError(id,'The prompt is empty. Type text or select an example, then run the model again. The model did not run.');live('Error: empty prompt');return}
+  if(n<2){promptError(id,'Type at least two tokens after BOS. Next-token prediction needs two or more tokens.');return}
+  if(n>100){promptError(id,`The prompt has ${n} tokens. This prototype accepts a maximum of 100 tokens (plus BOS). Make the prompt shorter and run the model again. The model did not run.`);live('Error: prompt too long');return}
   promptError('prompt');promptError('xPrompt');runTokens(tokenize(txt))}
 
 /* ============ loop ============ */
@@ -1237,7 +1237,7 @@ function main(){
   setStop.done=false;setStop(activeStop());
   addEventListener('keydown',onKey);
   refreshButtons();
-  if(!window.katex)toast('KaTeX could not load from the CDN; equations are shown as TeX source.');
+  if(!window.katex)toast('KaTeX did not load from the CDN. The equations show as TeX source.');
   requestAnimationFrame(loop);
   window.__A2={S,V,openHead,closeHead,enterExplore,exitExplore,toggleAbl,setStop,goStop,genStep,selectCell,targetView,gridScreen:()=>S.open?gridScreen():null,vpRect:()=>vp.getBoundingClientRect()};
 }
